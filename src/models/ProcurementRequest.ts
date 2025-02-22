@@ -30,6 +30,7 @@ export class ProcurementRequest
   public status!: 'Pending' | 'Approved' | 'Rejected' | 'Returned' | 'Completed';
   public priorityLevel!: 'Low' | 'Medium' | 'High';
   public requestedBy!: number;
+  public quantity!: number;
   public departmentId?: number | null;
   public deadlineDate!: Date;
 
