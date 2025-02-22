@@ -1,9 +1,9 @@
-const express = require('express');
-const dotenv = require('dotenv');
-const bodyParser = require('body-parser');
-const routes = require('./routes');
-const { sequelize } = require('./models/index');
-const { errorHandler } = require('./middlewares/errorHandler');
+import express from 'express';
+import dotenv from 'dotenv';
+import bodyParser from 'body-parser';
+import routes from './routes';
+import { sequelize } from './models';
+import { errorHandler } from './middlewares/ErrorHandler';
 
 // Load environment variables
 dotenv.config();
