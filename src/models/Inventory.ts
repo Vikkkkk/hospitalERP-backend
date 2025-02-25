@@ -1,39 +1,36 @@
+// backend-api/src/models/Inventory.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
+import { Department } from './Department';
 
-// Define the attributes for the Inventory model
-export interface InventoryAttributes {
+interface InventoryAttributes {
   id: number;
-  itemName: string;
+  itemname: string;
   quantity: number;
-  departmentId?: number | null;
-  minimumStockLevel: number;
-  lastRestocked?: Date;
+  minimumstocklevel: number;
+  departmentid: number | null;
+  lastRestocked: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-// Attributes required when creating a new inventory entry
-export interface InventoryCreationAttributes
-  extends Optional<InventoryAttributes, 'id' | 'departmentId' | 'lastRestocked' | 'createdAt' | 'updatedAt'> {}
+interface InventoryCreationAttributes
+  extends Optional<InventoryAttributes, 'id' | 'departmentid' | 'lastRestocked'> {}
 
-// Sequelize model definition for Inventory
-export class Inventory
-  extends Model<InventoryAttributes, InventoryCreationAttributes>
+export class Inventory extends Model<InventoryAttributes, InventoryCreationAttributes>
   implements InventoryAttributes {
   public id!: number;
-  public itemName!: string;
+  public itemname!: string;
   public quantity!: number;
-  public departmentId?: number | null;
-  public minimumStockLevel!: number;
-  public lastRestocked!: Date;
+  public minimumstocklevel!: number;
+  public departmentid!: number | null;
+  public lastRestocked!: Date | null;
 
-  // Timestamps
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
 
-// Initialize the Inventory model with Sequelize
+// Initialize Inventory model
 Inventory.init(
   {
     id: {
@@ -41,8 +38,8 @@ Inventory.init(
       primaryKey: true,
       autoIncrement: true,
     },
-    itemName: {
-      type: DataTypes.STRING,
+    itemname: {
+      type: DataTypes.STRING(255),
       allowNull: false,
     },
     quantity: {
@@ -50,22 +47,36 @@ Inventory.init(
       allowNull: false,
       defaultValue: 0,
     },
-    departmentId: {
-      type: DataTypes.INTEGER,
-      allowNull: true, // Null means it belongs to the main warehouse
-    },
-    minimumStockLevel: {
+    minimumstocklevel: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 10, // Trigger restocking if quantity falls below this level
+      defaultValue: 10,
+    },
+    departmentid: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: Department,
+        key: 'id',
+      },
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
     },
     lastRestocked: {
       type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
+      allowNull: true,
     },
   },
   {
     sequelize,
     modelName: 'Inventory',
+    tableName: 'Inventory',
+    timestamps: true,
   }
 );
+
+Inventory.belongsTo(Department, {
+  foreignKey: 'departmentid',
+  as: 'department',
+});
+

@@ -1,38 +1,39 @@
+// backend-api/src/models/ProcurementRequest.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
+import { Department } from './Department';
+import { User } from './User';
 
-export interface ProcurementRequestAttributes {
+interface ProcurementRequestAttributes {
   id: number;
   title: string;
   description?: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Returned' | 'Completed';
-  priorityLevel: 'Low' | 'Medium' | 'High';
-  requestedBy: number;
-  departmentId?: number | null; // Make departmentId nullable
-  deadlineDate: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
-  quantity: number; 
+  departmentid: number | null;
+  requestedby: number;
+  prioritylevel: 'Low' | 'Medium' | 'High';
+  deadlinedate: Date;
+  quantity: number;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+  approvalId?: string | null;
 }
 
-export interface ProcurementRequestCreationAttributes
-  extends Optional<
-    ProcurementRequestAttributes,
-    'id' | 'description' | 'departmentId' | 'createdAt' | 'updatedAt'
-  > {}
+interface ProcurementRequestCreationAttributes
+  extends Optional<ProcurementRequestAttributes, 'id' | 'description' | 'approvalId'> {}
 
 export class ProcurementRequest
   extends Model<ProcurementRequestAttributes, ProcurementRequestCreationAttributes>
-  implements ProcurementRequestAttributes {
+  implements ProcurementRequestAttributes
+{
   public id!: number;
   public title!: string;
   public description?: string;
-  public status!: 'Pending' | 'Approved' | 'Rejected' | 'Returned' | 'Completed';
-  public priorityLevel!: 'Low' | 'Medium' | 'High';
-  public requestedBy!: number;
+  public departmentid!: number | null;
+  public requestedby!: number;
+  public prioritylevel!: 'Low' | 'Medium' | 'High';
+  public deadlinedate!: Date;
   public quantity!: number;
-  public departmentId?: number | null;
-  public deadlineDate!: Date;
+  public status!: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+  public approvalId?: string | null;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -46,30 +47,34 @@ ProcurementRequest.init(
       autoIncrement: true,
     },
     title: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(255),
       allowNull: false,
     },
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    status: {
-      type: DataTypes.ENUM('Pending', 'Approved', 'Rejected', 'Returned', 'Completed'),
-      defaultValue: 'Pending',
+    departmentid: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: Department,
+        key: 'id',
+      },
     },
-    priorityLevel: {
-      type: DataTypes.ENUM('Low', 'Medium', 'High'),
-      defaultValue: 'Medium',
-    },
-    requestedBy: {
+    requestedby: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      references: {
+        model: User,
+        key: 'id',
+      },
     },
-    departmentId: {
-      type: DataTypes.INTEGER,
-      allowNull: true, // Allow null values for departmentId
+    prioritylevel: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
     },
-    deadlineDate: {
+    deadlinedate: {
       type: DataTypes.DATE,
       allowNull: false,
     },
@@ -77,9 +82,23 @@ ProcurementRequest.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    status: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      defaultValue: 'Pending',
+      validate: {
+        isIn: [['Pending', 'Approved', 'Rejected', 'Completed']],
+      },
+    },
+    approvalId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   },
   {
     sequelize,
     modelName: 'ProcurementRequest',
+    tableName: 'ProcurementRequests',
+    timestamps: true,
   }
 );

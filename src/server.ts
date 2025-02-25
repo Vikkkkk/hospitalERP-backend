@@ -1,32 +1,53 @@
-import express from 'express';
+import express, { Request, Response, NextFunction, Application } from 'express';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
-import routes from './routes';
-import { sequelize } from './models';
-import { errorHandler } from './middlewares/ErrorHandler';
+import authRoutes from './routes/AuthRoutes';
+import userRoutes from './routes/UserRoutes';
+import departmentRoutes from './routes/DepartmentRoutes';
+import inventoryRoutes from './routes/InventoryRoutes';
+import procurementRoutes from './routes/ProcurementRoutes';
+import permissionRoutes from './routes/PermissionRoutes';
+import approvalRoutes from './routes/ApprovalRoutes';
+import weComCallbackRoutes from './routes/ApprovalRoutes'; // Corrected WeCom callback import
+import { errorHandler } from './services/ErrorService';
+import { LoggerService } from './services/LoggerService';
 
-// Load environment variables
 dotenv.config();
 
-// Initialize Express app
-const app = express();
+const app: Application = express();
+const PORT = process.env.PORT || 3000;
+
+// Middlewares
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Connect all routes
-app.use('/api', routes);
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/procurements', procurementRoutes);
+app.use('/api/permissions', permissionRoutes);
+app.use('/api/approvals', approvalRoutes);
+app.use('/api/wecom-callback', weComCallbackRoutes);
 
-// Error Handling Middleware
-app.use(errorHandler);
-
-// Test route
-app.get('/', (req, res) => {
-  res.send('Hospital ERP System is Running');
+// Root endpoint
+app.get('/', (_req: Request, res: Response) => {
+  res.json({ message: 'Hospital ERP System API Running 🚀' });
 });
 
+// Error handler middleware
+app.use(errorHandler);
+
+// List all available routes without TypeScript errors
+console.log(
+  app._router.stack
+    .map((r: any) => r.route?.path)
+    .filter(Boolean)
+);
+
 // Start server
-const PORT = process.env.PORT || 3000;
-sequelize.sync({ force: false }).then(() => {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+app.listen(PORT, () => {
+  LoggerService.info(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });

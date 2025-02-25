@@ -1,35 +1,20 @@
-const User = require('./User');
-const Department = require('./Department');
-const ProcurementRequest = require('./ProcurementRequest');
+// backend-api/src/models/Associations.ts
+import { User } from './User';
+import { Department } from './Department';
+import { Inventory } from './Inventory';
+import { InventoryTransaction } from './InventoryTransaction';
 
-// Associations
+// Users belong to Departments
+User.belongsTo(Department, { foreignKey: 'departmentid', as: 'department' });
+Department.hasMany(User, { foreignKey: 'departmentid', as: 'users' });
 
-// User belongs to a Department
-User.belongsTo(Department, {
-  foreignKey: 'departmentId',
-  as: 'department',
-});
+// Inventory belongs to Departments
+Inventory.belongsTo(Department, { foreignKey: 'departmentid', as: 'department' });
+Department.hasMany(Inventory, { foreignKey: 'departmentid', as: 'inventory' });
 
-// Department has many Users
-Department.hasMany(User, {
-  foreignKey: 'departmentId',
-  as: 'users',
-});
+// Inventory Transactions
+InventoryTransaction.belongsTo(Inventory, { foreignKey: 'inventoryid', as: 'inventory' });
+Inventory.hasMany(InventoryTransaction, { foreignKey: 'inventoryid', as: 'transactions' });
 
-// Procurement Requests belong to a User (submitted by)
-ProcurementRequest.belongsTo(User, {
-  foreignKey: 'requestedBy',
-  as: 'requester',
-});
-
-// Procurement Requests belong to a Department
-ProcurementRequest.belongsTo(Department, {
-  foreignKey: 'departmentId',
-  as: 'department',
-});
-
-module.exports = {
-  User,
-  Department,
-  ProcurementRequest,
-};
+InventoryTransaction.belongsTo(User, { foreignKey: 'performedby', as: 'performedBy' });
+User.hasMany(InventoryTransaction, { foreignKey: 'performedby', as: 'transactions' });

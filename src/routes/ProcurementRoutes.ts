@@ -1,4 +1,4 @@
-import { Router, Response, RequestHandler } from 'express';
+import { Router, Response } from 'express';
 import { ProcurementRequest } from '../models/ProcurementRequest';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
 import { authorizeRole } from '../middlewares/RoleCheck';
@@ -10,75 +10,88 @@ const router = Router();
 interface ProcurementRequestBody {
   title: string;
   description?: string;
-  departmentId: number;
-  priorityLevel: 'Low' | 'Medium' | 'High';
-  deadlineDate: Date;
+  departmentid: number;
+  prioritylevel: 'Low' | 'Medium' | 'High';
+  deadlinedate: Date;
+  quantity: number;
 }
 
-// Submit a new procurement request
+// 📝 Submit a new procurement request
 router.post(
   '/',
-  authenticateUser as unknown as RequestHandler,
-  authorizeRole(['Staff', 'DeputyDirector', 'Director']) as unknown as RequestHandler,
+  authenticateUser,
+  authorizeRole(['职员', '副部长', '部长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { title, description, departmentId, priorityLevel, deadlineDate , quantity} = req.body;
+      const {
+        title,
+        description,
+        departmentid,
+        prioritylevel,
+        deadlinedate,
+        quantity,
+      }: ProcurementRequestBody = req.body;
 
       // Create a new procurement request
       const newRequest = await ProcurementRequest.create({
         title,
         description,
-        departmentId,
-        priorityLevel,
-        deadlineDate,
+        departmentid,
+        prioritylevel,
+        deadlinedate,
         quantity,
-        requestedBy: req.user!.id, // Non-null assertion for authenticated user ID
-        status: 'Pending', // Default status for new requests
+        requestedby: req.user!.id,
+        status: 'Pending',
       });
 
-      // Send a mock approval notification
-      notifyApprovalRequired(newRequest.id, 'Director');
+      // Send approval notification (Simulated for now)
+      notifyApprovalRequired(newRequest.id, '部长');
 
       res.status(201).json({
-        message: 'Procurement request submitted successfully.',
+        message: '采购请求已成功提交。',
         request: newRequest,
       });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Failed to submit procurement request.' });
+      console.error('❌ 提交采购请求失败:', error);
+      res.status(500).json({ message: '提交采购请求失败。' });
     }
   }
 );
 
-// View all procurement requests (Admin, Director, DeputyDirector)
+// 📄 View all procurement requests (RootAdmin, 院长, 副院长, 部长)
 router.get(
   '/',
-  authenticateUser as unknown as RequestHandler,
-  authorizeRole(['Admin', 'Director', 'DeputyDirector']) as unknown as RequestHandler,
+  authenticateUser,
+  authorizeRole(['RootAdmin', '院长', '副院长', '部长']),
   async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const requests = await ProcurementRequest.findAll();
       res.status(200).json({ requests });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Failed to fetch procurement requests.' });
+      console.error('❌ 无法获取采购请求:', error);
+      res.status(500).json({ message: '无法获取采购请求。' });
     }
   }
 );
 
-// Approve, reject, or return a procurement request
+// ✅ Approve, reject, or return a procurement request
 router.patch(
   '/:id/status',
-  authenticateUser as unknown as RequestHandler,
-  authorizeRole(['Director', 'DeputyDirector', 'Admin']) as unknown as RequestHandler,
+  authenticateUser,
+  authorizeRole(['RootAdmin', '院长', '副院长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
       const { status } = req.body;
 
+      if (!['Pending', 'Approved', 'Rejected', 'Returned'].includes(status)) {
+        res.status(400).json({ message: '无效的请求状态' });
+        return;
+      }
+
       const request = await ProcurementRequest.findByPk(id);
       if (!request) {
-        res.status(404).json({ message: 'Procurement request not found.' });
+        res.status(404).json({ message: '未找到采购请求。' });
         return;
       }
 
@@ -86,12 +99,12 @@ router.patch(
       await request.save();
 
       res.status(200).json({
-        message: `Request status updated to ${status}.`,
+        message: `请求状态已更新为 ${status}`,
         request,
       });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Failed to update procurement request status.' });
+      console.error('❌ 无法更新采购请求状态:', error);
+      res.status(500).json({ message: '无法更新采购请求状态。' });
     }
   }
 );

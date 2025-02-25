@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
+import { Router, Response } from 'express';
 import { Inventory } from '../models/Inventory';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
 import { authorizeRole } from '../middlewares/RoleCheck';
@@ -6,48 +6,48 @@ import { authorizeRole } from '../middlewares/RoleCheck';
 interface InventoryTransferRequest {
   itemName: string;
   quantity: number;
-  departmentId: number;
+  departmentid: number;
 }
 
 interface InventoryUsageUpdateRequest {
   itemName: string;
   usedQuantity: number;
-  departmentId: number;
+  departmentid: number;
 }
 
 const router = Router();
 
-// View all inventory items
+// 🔍 View all inventory items
 router.get(
   '/',
-  authenticateUser as unknown as RequestHandler, // Force-cast to match TypeScript expectations
-  authorizeRole(['Admin', 'Director', 'DeputyDirector', 'WarehouseStaff']) as unknown as RequestHandler,
-  async (_req: Request, res: Response) => {
+  authenticateUser,
+  authorizeRole(['RootAdmin', '院长', '副院长', '部长', '职员']),
+  async (_req: AuthenticatedRequest, res: Response) => {
     try {
       const inventoryItems = await Inventory.findAll();
       res.status(200).json({ inventory: inventoryItems });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Failed to fetch inventory items.' });
+      console.error('❌ 获取库存信息失败:', error);
+      res.status(500).json({ message: '无法获取库存信息' });
     }
   }
 );
 
-// Transfer stock from the main warehouse to a department
+// 🔄 Transfer stock from the main warehouse to a department
 router.post(
   '/transfer',
-  authenticateUser as unknown as RequestHandler,
-  authorizeRole(['Admin', 'WarehouseStaff']) as unknown as RequestHandler,
+  authenticateUser,
+  authorizeRole(['RootAdmin', 'WarehouseStaff']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { itemName, quantity, departmentId } = req.body;
+      const { itemName, quantity, departmentid }: InventoryTransferRequest = req.body;
 
       const warehouseItem = await Inventory.findOne({
-        where: { itemName, departmentId: null },
+        where: { itemname: itemName, departmentid: null },
       });
 
       if (!warehouseItem || warehouseItem.quantity < quantity) {
-        res.status(400).json({ message: 'Insufficient stock in the warehouse.' });
+        res.status(400).json({ message: '仓库库存不足' });
         return;
       }
 
@@ -55,54 +55,54 @@ router.post(
       await warehouseItem.save();
 
       let departmentItem = await Inventory.findOne({
-        where: { itemName, departmentId },
+        where: { itemname: itemName, departmentid },
       });
 
       if (departmentItem) {
         departmentItem.quantity += quantity;
       } else {
         departmentItem = await Inventory.create({
-          itemName,
+          itemname: itemName,
           quantity,
-          departmentId,
-          minimumStockLevel: 10,
+          departmentid,
+          minimumstocklevel: 10,
         });
       }
 
       await departmentItem.save();
-      res.status(200).json({ message: 'Stock transferred successfully.' });
+      res.status(200).json({ message: '库存成功转移' });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Failed to transfer stock.' });
+      console.error('❌ 库存转移失败:', error);
+      res.status(500).json({ message: '库存转移失败' });
     }
   }
 );
 
-// Update daily inventory usage
+// ✏️ Update daily inventory usage
 router.patch(
   '/update',
-  authenticateUser as unknown as RequestHandler,
-  authorizeRole(['Staff', 'DeputyDirector', 'Director']) as unknown as RequestHandler,
+  authenticateUser,
+  authorizeRole(['职员', '副部长', '部长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { itemName, usedQuantity, departmentId } = req.body;
+      const { itemName, usedQuantity, departmentid }: InventoryUsageUpdateRequest = req.body;
 
       const departmentItem = await Inventory.findOne({
-        where: { itemName, departmentId },
+        where: { itemname: itemName, departmentid },
       });
 
       if (!departmentItem || departmentItem.quantity < usedQuantity) {
-        res.status(400).json({ message: 'Insufficient stock for usage update.' });
+        res.status(400).json({ message: '库存不足，无法更新' });
         return;
       }
 
       departmentItem.quantity -= usedQuantity;
       await departmentItem.save();
 
-      res.status(200).json({ message: 'Inventory updated successfully.' });
+      res.status(200).json({ message: '库存使用情况已更新' });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Failed to update inventory usage.' });
+      console.error('❌ 更新库存使用失败:', error);
+      res.status(500).json({ message: '库存使用情况更新失败' });
     }
   }
 );

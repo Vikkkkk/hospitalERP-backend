@@ -1,30 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
+import { Permissions } from '../models/Permissions';
+import { AuthenticatedRequest } from './AuthMiddleware';
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    globalRole?: string;
-    departmentRole?: string;
-  };
-}
-
-// Middleware for checking global and department roles
 export const authorizeRole = (allowedRoles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const user = req.user;
-
-    if (!user) {
-      return res.status(401).json({ message: 'Unauthorized: User not authenticated' });
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction):Promise<any> => {
+    if (!req.user) {
+      return res.status(403).json({ message: '未经授权的访问' });
     }
 
-    const { globalRole, departmentRole } = user;
+    const { role, departmentid, isglobalrole } = req.user;
 
-    if (
-      (globalRole && allowedRoles.includes(globalRole)) ||
-      (departmentRole && allowedRoles.includes(departmentRole))
-    ) {
+    // RootAdmin or global roles have full access
+    if (isglobalrole || allowedRoles.includes(role)) {
       return next();
     }
 
-    return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+    // Check permissions from the Permissions table
+    const permission = await Permissions.findOne({
+      where: {
+        role,
+        departmentid,
+        canaccess: true,
+      },
+    });
+
+    if (!permission) {
+      return res.status(403).json({ message: '无权限访问该模块' });
+    }
+
+    next();
   };
 };

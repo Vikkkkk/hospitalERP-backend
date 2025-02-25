@@ -1,19 +1,21 @@
+// backend-api/src/models/Department.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
 
-// Define the attributes for the Department model
 interface DepartmentAttributes {
   id: number;
   name: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-interface DepartmentCreationAttributes extends Optional<DepartmentAttributes, 'id'> {}
+interface DepartmentCreationAttributes
+  extends Optional<DepartmentAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-// Sequelize model definition for Department
-export class Department extends Model<DepartmentAttributes, DepartmentCreationAttributes> {
+export class Department extends Model<DepartmentAttributes, DepartmentCreationAttributes>
+  implements DepartmentAttributes {
   public id!: number;
   public name!: string;
-
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -26,13 +28,24 @@ Department.init(
       autoIncrement: true,
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(255),
       allowNull: false,
-      unique: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
     },
   },
   {
     sequelize,
     modelName: 'Department',
+    tableName: 'Departments',
+    timestamps: true,
   }
 );

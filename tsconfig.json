@@ -7,8 +7,13 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "typeRoots": ["./src/types", "./node_modules/@types"],
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "types": ["node","express"]
   },
+  
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
