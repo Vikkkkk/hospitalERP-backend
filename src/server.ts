@@ -8,7 +8,7 @@ import inventoryRoutes from './routes/InventoryRoutes';
 import procurementRoutes from './routes/ProcurementRoutes';
 import permissionRoutes from './routes/PermissionRoutes';
 import approvalRoutes from './routes/ApprovalRoutes';
-import weComCallbackRoutes from './routes/ApprovalRoutes'; // Corrected WeCom callback import
+import weComCallbackRoutes from './routes/WeComCallbackRoutes';
 import { errorHandler } from './services/ErrorService';
 import { LoggerService } from './services/LoggerService';
 
