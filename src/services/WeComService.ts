@@ -36,9 +36,7 @@ const fetchAccessToken = async (): Promise<string> => {
 /**
  * 📩 Send an approval request to WeCom
  */
-export const sendWeComApprovalRequest = async (
-  request: any
-): Promise<string> => {
+export const sendWeComApprovalRequest = async (request: any): Promise<string> => {
   try {
     const token = await fetchAccessToken();
 
@@ -49,9 +47,17 @@ export const sendWeComApprovalRequest = async (
       approvers: ['ManagerID', 'DirectorID'], // Replace with real WeCom user IDs
     };
 
+    console.log("📤 发送至 WeCom 的审批请求:", JSON.stringify(payload, null, 2));
+
     const response = await axios.post(
-      `https://qyapi.weixin.qq.com/cgi-bin/oa/applyevent?access_token=${token}`,
-      payload
+      "https://qyapi.weixin.qq.com/cgi-bin/oa/applyevent",
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
     );
 
     if (response.data.errcode !== 0) {
@@ -65,6 +71,7 @@ export const sendWeComApprovalRequest = async (
     throw new Error('无法发送审批请求');
   }
 };
+
 
 /**
  * 🧑‍💻 Retrieve WeCom User Information for Login
