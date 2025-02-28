@@ -10,6 +10,7 @@ interface UserAttributes {
   departmentid: number | null;
   password: string;
   isglobalrole: boolean;
+  wecom_userid: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -25,8 +26,10 @@ export class User extends Model<UserAttributes, UserCreationAttributes>
   public departmentid!: number | null;
   public password!: string;
   public isglobalrole!: boolean;
+  public wecom_userid!: string | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+  
 }
 
 User.init(
@@ -60,6 +63,11 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    wecom_userid: {
+      type: DataTypes.STRING(50),
+      allowNull: true, // 👈 Allow null because not all users will have it
+      unique: true,
+    }
   },
   {
     sequelize,

@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction, Application } from 'express';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
+import path from 'path';
+
 import authRoutes from './routes/AuthRoutes';
 import userRoutes from './routes/UserRoutes';
 import departmentRoutes from './routes/DepartmentRoutes';
@@ -9,6 +11,7 @@ import procurementRoutes from './routes/ProcurementRoutes';
 import permissionRoutes from './routes/PermissionRoutes';
 import approvalRoutes from './routes/ApprovalRoutes';
 import weComCallbackRoutes from './routes/WeComCallbackRoutes';
+import weComAuthRoutes from './routes/WeComAuthRoutes';
 import { errorHandler } from './services/ErrorService';
 import { LoggerService } from './services/LoggerService';
 
@@ -16,6 +19,9 @@ dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
+
+//Serve static files
+app.use(express.static('public'))
 
 // Middlewares
 app.use(bodyParser.json());
@@ -30,6 +36,7 @@ app.use('/api/procurements', procurementRoutes);
 app.use('/api/permissions', permissionRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/wecom-callback', weComCallbackRoutes);
+app.use('/api/wecom-auth', weComAuthRoutes);
 
 // Root endpoint
 app.get('/', (_req: Request, res: Response) => {

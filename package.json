@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "build": "tsc",
-    "dev": "nodemon src/server.js",
+    "dev": "nodemon src/server.ts",
     "test": "npx tsc --noEmit",
     "migrate": "sequelize-cli db:migrate --config backend-api/config/config.js",
     "migrate:undo": "sequelize-cli db:migrate:undo --config backend-api/config/config.js",
