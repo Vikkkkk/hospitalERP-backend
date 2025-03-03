@@ -1,12 +1,15 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
-import { getWeComUser } from '../services/WeComService'; // Fixed the import issue
+import { AuthService } from '../services/AuthService'; // ✅ Use AuthService for login logic
+import { getWeComUser } from '../services/WeComService';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'supersecretkey';
 
 export class AuthController {
+  /**
+   * 🔑 User Login (Username & Password)
+   */
   static async login(req: Request, res: Response): Promise<void> {
     try {
       const { username, password } = req.body;
@@ -22,7 +25,7 @@ export class AuthController {
         return;
       }
 
-      const passwordMatch = await bcrypt.compare(password, user.password);
+      const passwordMatch = await AuthService.login(username, password); // ✅ Call AuthService for login check
       if (!passwordMatch) {
         res.status(401).json({ message: '密码错误' });
         return;
@@ -50,11 +53,15 @@ export class AuthController {
         },
       });
     } catch (error) {
-      console.error('❌ 登录失败:', error);
+      const err = error as Error; // ✅ Typecast error for safe logging
+      console.error('❌ 登录失败:', err.message);
       res.status(500).json({ message: '无法完成登录' });
     }
   }
 
+  /**
+   * 🔑 WeCom Login (SSO Integration)
+   */
   static async wecomLogin(req: Request, res: Response): Promise<void> {
     try {
       const { code } = req.body;
@@ -98,11 +105,15 @@ export class AuthController {
         },
       });
     } catch (error) {
-      console.error('❌ WeCom 登录失败:', error);
+      const err = error as Error; // ✅ Typecast error safely
+      console.error('❌ WeCom 登录失败:', err.message);
       res.status(500).json({ message: 'WeCom 登录失败' });
     }
   }
 
+  /**
+   * 🔒 User Logout
+   */
   static logout(_req: Request, res: Response): void {
     res.status(200).json({ message: '已退出登录' });
   }

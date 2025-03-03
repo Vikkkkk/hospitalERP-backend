@@ -22,7 +22,7 @@ export class AuthService {
         throw new Error('用户不存在');
       }
 
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      const isPasswordValid = await bcrypt.compare(password, user.password_hash); // ✅ Changed from `password` to `password_hash`
       if (!isPasswordValid) {
         throw new Error('无效的密码');
       }
@@ -41,7 +41,8 @@ export class AuthService {
 
       return { token, user };
     } catch (error) {
-      console.error('❌ 登录失败:', error);
+      const err = error as Error;
+      console.error('❌ 登录失败:', err.message);
       throw new Error('无法登录');
     }
   }
@@ -52,10 +53,10 @@ export class AuthService {
   static async hashPassword(password: string): Promise<string> {
     try {
       const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-      return hashedPassword;
+      return await bcrypt.hash(password, saltRounds);
     } catch (error) {
-      console.error('❌ 密码加密失败:', error);
+      const err = error as Error;
+      console.error('❌ 密码加密失败:', err.message);
       throw new Error('无法加密密码');
     }
   }
@@ -67,7 +68,8 @@ export class AuthService {
     try {
       return jwt.verify(token, JWT_SECRET);
     } catch (error) {
-      console.error('❌ 无效的Token:', error);
+      const err = error as Error;
+      console.error('❌ 无效的Token:', err.message);
       throw new Error('Token无效或已过期');
     }
   }

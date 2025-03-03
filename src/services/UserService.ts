@@ -53,7 +53,7 @@ export class UserService {
 
     if (!user) return null;
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     return isPasswordValid ? user : null;
   }
 

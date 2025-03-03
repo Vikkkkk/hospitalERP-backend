@@ -38,7 +38,7 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
       return;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
       res.status(401).json({ message: '密码错误' });

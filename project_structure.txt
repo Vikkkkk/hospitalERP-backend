@@ -1,0 +1,100 @@
+.
+├── DEV_LOG.md
+├── Readme.md
+├── ai-restocking
+│   ├── restockingService.ts
+│   └── trigger.ts
+├── database
+│   ├── config
+│   │   └── config.js
+│   ├── migrations
+│   │   ├── 20250222010100-create-tables.js
+│   │   ├── 20250225024211-add-timestamps-to-users.js
+│   │   ├── 20250225024839-add-timestamps-to-permissions.js
+│   │   ├── 20250226071940-create-procurement-requests.js
+│   │   └── 20250226094517-add-wecom-userid-to-users.js
+│   ├── models
+│   │   └── index.js
+│   ├── schema.sql
+│   └── seeders
+│       ├── 20250222010200-seed-default-data.js
+│       ├── 20250225022750-initial-data.js
+│       └── 20250226072405-seed-procurement-requests.js
+|
+├── logs
+│   └── application.log
+├── package.json
+├── project_structure.txt
+├── public
+│   └── WW_verify_brw4r5sfIdN6OhyC.txt
+├── scripts
+│   ├── Readme.md
+│   ├── backup.ts
+│   └── restore.ts
+├── src
+│   ├── app.ts
+│   ├── config
+│   │   ├── database.ts
+│   │   └── wecomConfig.ts
+│   ├── controllers
+│   │   ├── AuthController.ts
+│   │   ├── DepartmentController.ts
+│   │   ├── InventoryController.ts
+│   │   ├── PermissionController.ts
+│   │   ├── ProcurementController.ts
+│   │   └── UserController.ts
+│   ├── middlewares
+│   │   ├── AuthMiddleware.ts
+│   │   ├── ErrorHandler.ts
+│   │   └── RoleCheck.ts
+│   ├── models
+│   │   ├── Associations.ts
+│   │   ├── Department.ts
+│   │   ├── Inventory.ts
+│   │   ├── InventoryTransaction.ts
+│   │   ├── Permissions.ts
+│   │   ├── ProcurementRequest.ts
+│   │   ├── User.ts
+│   │   └── index.ts
+│   ├── routes
+│   │   ├── ApprovalRoutes.ts
+│   │   ├── AuthRoutes.ts
+│   │   ├── DepartmentRoutes.ts
+│   │   ├── InventoryRoutes.ts
+│   │   ├── PermissionRoutes.ts
+│   │   ├── ProcurementRoutes.ts
+│   │   ├── UserRoutes.ts
+│   │   ├── WeComAuthRoutes.ts
+│   │   ├── WeComCallbackRoutes.ts
+│   │   └── index.ts
+│   ├── server.ts
+│   ├── services
+│   │   ├── ApprovalService.ts
+│   │   ├── AuditService.ts
+│   │   ├── AuditTrialService.ts
+│   │   ├── AuthService.ts
+│   │   ├── DepartmentService.ts
+│   │   ├── ErrorService.ts
+│   │   ├── LoggerService.ts
+│   │   ├── NotificationService.ts
+│   │   ├── PermissionService.ts
+│   │   ├── ReportService.ts
+│   │   ├── RestockingService.ts
+│   │   ├── UserService.ts
+│   │   └── WeComService.ts
+│   ├── types
+│   │   ├── RequestTypes.d.ts
+│   │   ├── express
+│   │   └── wechat-crypto.d.ts
+│   └── utils
+│       ├── helper.ts
+│       └── logger.ts
+├── tests
+├── tsconfig.json
+├── wecom-integration
+│   ├── Readme.md
+│   ├── callbacks.ts
+│   └── wecomService.ts
+└── yarn.lock
+
+30 directories, 121 files

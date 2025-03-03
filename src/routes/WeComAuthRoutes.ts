@@ -94,7 +94,7 @@ router.post('/link-wecom', authenticateUser, async (req: AuthenticatedRequest, r
     }
 
     // Verify password before linking WeCom account
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
       return res.status(401).json({ message: '密码错误，无法绑定WeCom账号' });
     }

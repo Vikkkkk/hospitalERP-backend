@@ -32,7 +32,7 @@ router.post(
         username,
         role,
         departmentid: req.user!.departmentid, // Inherit department from the creator
-        password: hashedPassword,
+        password_hash: hashedPassword,
         isglobalrole: false,
       });
 
@@ -110,7 +110,7 @@ router.patch(
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      user.password = hashedPassword;
+      user.password_hash = hashedPassword;
       await user.save();
 
       res.status(200).json({ message: '用户密码已重置' });
