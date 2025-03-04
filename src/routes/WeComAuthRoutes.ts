@@ -55,18 +55,36 @@ router.get('/wecom-callback', async (req: Request, res: Response): Promise<any> 
         role: user.role,
         departmentid: user.departmentid,
         isglobalrole: user.isglobalrole,
+        wecom_userid: user.wecom_userid, // ✅ Now included
+        createdAt: user.createdAt, // ✅ Useful for frontend display
+        updatedAt: user.updatedAt, // ✅ Useful for session tracking
       },
       JWT_SECRET as string,
       { expiresIn: '8h' }
     );
 
+    res.status(200).json({
+      message: 'WeCom登录成功',
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        departmentid: user.departmentid,
+      },
+    });
     console.log(`✅ WeCom login successful, redirecting user to: ${FRONTEND_URL}/login?token=XYZ`);
     res.redirect(`${FRONTEND_URL}/login?token=${token}`);
   } catch (error) {
     console.error('❌ WeCom 登录失败:', (error as Error).message);
+    res.status(500).json({ message: 'WeCom 登录失败' });
     res.redirect(`${FRONTEND_URL}/login?error=internal_error`);
   }
+
+ 
 });
+
+    
 
 /**
  * 🔑 WeCom Login API (For Mobile Apps / Non-QR Based Logins)

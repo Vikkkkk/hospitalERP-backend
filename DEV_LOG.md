@@ -99,3 +99,55 @@
 - Preventing errors from unrecognized approval status formats.
 - Ensuring WeCom QR code login works correctly.
 - Preventing login failures due to missing callback handling.
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+📅 [2025-03-03] Sprint #002 - Backend Updates
+Commit: sprint002
+
+🔄 Changes:
+Implemented WeCom Login via QR Code
+
+Added WeCom authentication using /wecom-callback.
+Verified code against WeCom API.
+If the user exists, JWT is generated for login.
+If the user is not linked, redirects with an error message.
+Updated WeCom Authentication Handling
+
+Improved error handling for invalid OAuth codes.
+Added logging for WeCom API responses.
+Ensured access tokens are correctly retrieved and cached.
+Implemented Frontend Redirection for WeCom Login
+
+Redirects to /login?error=wecom_auth_failed on failure.
+Redirects to /login?error=unlinked_account if no associated user.
+Updated WeCom API Service
+
+Improved error handling for expired OAuth codes.
+Fixed token expiration handling.
+Improved logging for debugging.
+Implemented .env Variable Support
+
+WeCom API credentials are now securely loaded from .env.
+CORS & Security Updates
+
+Allowed https://readily-hip-leech.ngrok-free.app as an origin for API access.
+Fixed Access-Control-Allow-Credentials issues.
+🐛 Fixes:
+Fixed "OAuth Code Already Used" issue by ensuring WeCom API calls are made correctly.
+Resolved JWT_SECRET missing environment variable issue.
+Fixed missing wecom_userid in JWT payload.
+Ensured proper redirects for failed WeCom logins.
+📂 Affected Files:
+src/routes/WeComAuthRoutes.ts
+src/routes/WeComCallbackRoutes.ts
+src/services/WeComService.ts
+src/middlewares/AuthMiddleware.ts
+src/server.ts
+.env (Updated with WeCom API credentials)
+✅ Testing:
+Successfully logged in via WeCom QR code.
+Verified JWT contains correct user attributes.
+Tested failed logins (unlinked account, expired code, invalid token).
+Verified redirections to /login with appropriate error messages.
+
