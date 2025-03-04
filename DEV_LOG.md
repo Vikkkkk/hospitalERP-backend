@@ -1,6 +1,6 @@
 # 📅 [2025-03-02] Sprint #001
 
-**Commit:** [`backendOptimization`](https://github.com/Vikkkkk/hospitalERP-backend/commit/backendOptimization)
+**Commit:** [`sprint001`](https://github.com/Vikkkkk/hospitalERP-backend/commit/sprint001)
 **Changes:**
 
 - Updated `models/user.js`:
@@ -50,3 +50,52 @@
 - Fixing TypeScript errors from `password` → `password_hash` migration.
 - Cleaning up unused imports in `User.ts`.
 - Improving error handling in middleware.
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+## 📅 [2025-03-02] (sprint #002)
+**Commit:** [`sprint002-wecom`](https://github.com/Vikkkkk/hospitalERP-backend/commit/sprint002-wecom)
+
+**Changes:**
+- **Authentication Updates:**
+  - Fixed authentication issues and database inconsistencies.
+  - Manually added `deletedAt` column in the `Users` table to support `paranoid: true` soft deletes.
+  - Updated `AuthMiddleware.ts` to improve JWT handling and error logging.
+  - Successfully tested and verified user login and token generation.
+  - Tested protected routes to ensure JWT-based authentication is working correctly.
+
+- **WeCom Integration Updates:**
+  - Updated `WeComAuthRoutes.ts`:
+    - **Added `/wecom-callback` route** to support login via QR code.
+    - **Ensured correct JWT authentication flow** after QR login.
+    - **Enhanced error logging** for easier debugging.
+    - **Fixed import paths and improved security.**
+  - Updated `WeComService.ts`:
+    - Improved access token management with automatic expiry handling.
+    - Ensured approval requests pull real approvers dynamically.
+    - Cleaned up status mapping for WeCom approval callbacks.
+    - Enhanced error logging for better debugging.
+  - Updated `wecom-integration/callbacks.ts`:
+    - Fixed incorrect import path for `ProcurementRequest`.
+    - Improved status handling with flexible mapping.
+    - Enhanced error logging for better debugging.
+
+**Affected Files:**
+- `src/models/User.ts`
+- `src/middlewares/AuthMiddleware.ts`
+- `src/controllers/AuthController.ts`
+- `src/services/AuthService.ts`
+- `src/routes/WeComAuthRoutes.ts`
+- `src/services/WeComService.ts`
+- `wecom-integration/callbacks.ts`
+
+**Related Issues:**
+- Ensuring consistency between Sequelize ORM and PostgreSQL schema.
+- Verified and tested authentication endpoints.
+- Confirmed that protected routes enforce authentication.
+- Ensuring secure WeCom authentication and account linking.
+- Improving WeCom login flow with better validations.
+- Ensuring WeCom approval callbacks correctly update the procurement system.
+- Preventing errors from unrecognized approval status formats.
+- Ensuring WeCom QR code login works correctly.
+- Preventing login failures due to missing callback handling.

@@ -7,37 +7,47 @@ import { getWeComUser } from '../services/WeComService';
 
 const router = Router();
 
+// Securely retrieve JWT secret
+const JWT_SECRET = process.env.JWT_SECRET;
+const FRONTEND_URL = process.env.FRONTEND_URL; // Ensure this is set in env variables
+
+if (!JWT_SECRET) {
+  throw new Error('🚨 Missing JWT_SECRET in environment variables! Server cannot run.');
+}
+if (!FRONTEND_URL) {
+  console.warn('⚠️ FRONTEND_URL is not set in environment variables!');
+}
+
 /**
- * 🔑 WeCom Login API
- * - Verifies WeCom user identity using OAuth.
- * - If `wecom_userid` is linked, logs in the user securely.
- * - If not linked, denies login and requires manual linking.
+ * ✅ WeCom OAuth Callback Route
+ * - Handles WeCom login via QR code authentication.
  */
-router.post('/wecom-login', async (req: Request, res: Response):Promise<any> => {
+router.get('/wecom-callback', async (req: Request, res: Response): Promise<any> => {
   try {
-    const { code } = req.body; // WeCom authorization code
+    const { code } = req.query;
+    console.log(`🟡 WeCom OAuth Code Received: ${code}`);
 
     if (!code) {
-      return res.status(400).json({ message: '缺少WeCom授权码' });
+      console.error(`❌ WeCom Callback Error: Missing OAuth Code`);
+      return res.redirect(`${FRONTEND_URL}/login?error=missing_code`);
     }
 
-    // Fetch WeCom user info using the code
-    const wecomUser = await getWeComUser(code);
+    console.log(`🔍 Fetching WeCom user info for code: ${code}(wecom callback hit)`);
+    const wecomUser = await getWeComUser(code as string);
 
-    if (!wecomUser || !wecomUser.userid) {
-      return res.status(401).json({ message: 'WeCom认证失败' });
+    if (!wecomUser || !wecomUser.UserId) {
+      console.warn(`⚠️ WeCom authentication failed, redirecting...`);
+      return res.redirect(`${FRONTEND_URL}/login?error=wecom_auth_failed`);
     }
 
-    // Check if a user is linked with this wecom_userid
-    const user = await User.findOne({ where: { wecom_userid: wecomUser.userid } });
+    console.log(`🔍 Searching for user in database with WeCom UserId: ${wecomUser.UserId}`);
+    const user = await User.findOne({ where: { wecom_userid: wecomUser.UserId } });
 
     if (!user) {
-      return res.status(403).json({
-        message: 'WeCom账号未绑定，请使用普通账号登录并绑定后再使用WeCom登录。',
-      });
+      console.warn(`⚠️ WeCom user not linked to an account: ${wecomUser.UserId}`)
+      return res.redirect(`${FRONTEND_URL}/login?error=unlinked_account`);
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       {
         id: user.id,
@@ -46,7 +56,50 @@ router.post('/wecom-login', async (req: Request, res: Response):Promise<any> => 
         departmentid: user.departmentid,
         isglobalrole: user.isglobalrole,
       },
-      process.env.JWT_SECRET as string,
+      JWT_SECRET as string,
+      { expiresIn: '8h' }
+    );
+
+    console.log(`✅ WeCom login successful, redirecting user to: ${FRONTEND_URL}/login?token=XYZ`);
+    res.redirect(`${FRONTEND_URL}/login?token=${token}`);
+  } catch (error) {
+    console.error('❌ WeCom 登录失败:', (error as Error).message);
+    res.redirect(`${FRONTEND_URL}/login?error=internal_error`);
+  }
+});
+
+/**
+ * 🔑 WeCom Login API (For Mobile Apps / Non-QR Based Logins)
+ */
+router.post('/wecom-login', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ message: '缺少WeCom授权码' });
+    }
+
+    console.log(`🔍 Fetching WeCom user info for code: ${code} (from /wecom-login)`);
+    const wecomUser = await getWeComUser(code);
+    if (!wecomUser || !wecomUser.userid) {
+      return res.status(401).json({ message: 'WeCom认证失败' });
+    }
+
+    const user = await User.findOne({ where: { wecom_userid: wecomUser.userid } });
+    if (!user) {
+      return res.status(403).json({
+        message: 'WeCom账号未绑定，请使用普通账号登录并绑定后再使用WeCom登录。',
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        departmentid: user.departmentid,
+        isglobalrole: user.isglobalrole,
+      },
+      JWT_SECRET as string,
       { expiresIn: '8h' }
     );
 
@@ -61,18 +114,15 @@ router.post('/wecom-login', async (req: Request, res: Response):Promise<any> => 
       },
     });
   } catch (error) {
-    console.error('❌ WeCom 登录失败:', error);
+    console.error('❌ WeCom 登录失败:', (error as Error).message);
     res.status(500).json({ message: 'WeCom 登录失败' });
   }
 });
 
 /**
  * 🔗 WeCom Account Linking API
- * - Allows users to link their WeCom account **after logging in**.
- * - Requires confirmation of **existing password**.
- * - Prevents unauthorized users from linking accounts.
  */
-router.post('/link-wecom', authenticateUser, async (req: AuthenticatedRequest, res: Response):Promise<any> => {
+router.post('/link-wecom', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
   try {
     const { code, password } = req.body;
 
@@ -80,38 +130,36 @@ router.post('/link-wecom', authenticateUser, async (req: AuthenticatedRequest, r
       return res.status(400).json({ message: '缺少必要的参数' });
     }
 
-    // Fetch WeCom user info using the code
     const wecomUser = await getWeComUser(code);
-
     if (!wecomUser || !wecomUser.userid) {
       return res.status(401).json({ message: 'WeCom认证失败' });
     }
 
-    // Ensure the logged-in user is verifying their own account
     const user = await User.findByPk(req.user!.id);
     if (!user) {
       return res.status(404).json({ message: '用户未找到' });
     }
 
-    // Verify password before linking WeCom account
+    if (user.wecom_userid) {
+      return res.status(409).json({ message: '您的账号已绑定WeCom，无法重复绑定' });
+    }
+
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
       return res.status(401).json({ message: '密码错误，无法绑定WeCom账号' });
     }
 
-    // Ensure the WeCom account is not already linked
     const existingUserWithWeCom = await User.findOne({ where: { wecom_userid: wecomUser.userid } });
     if (existingUserWithWeCom) {
       return res.status(409).json({ message: '该WeCom账号已绑定至其他用户' });
     }
 
-    // Link WeCom account to the user
     user.wecom_userid = wecomUser.userid;
     await user.save();
 
     res.status(200).json({ message: 'WeCom账号绑定成功' });
   } catch (error) {
-    console.error('❌ WeCom 绑定失败:', error);
+    console.error('❌ WeCom 绑定失败:', (error as Error).message);
     res.status(500).json({ message: 'WeCom 绑定失败' });
   }
 });

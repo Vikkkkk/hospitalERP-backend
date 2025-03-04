@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction, Application } from 'express';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import path from 'path';
+import cors from 'cors';
 
 import authRoutes from './routes/AuthRoutes';
 import userRoutes from './routes/UserRoutes';
@@ -19,6 +20,12 @@ dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
+
+// Allow requests from frontend
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://readily-hip-leech.ngrok-free.app'], // Adjust as needed
+  credentials: true, // Allow cookies and authentication headers
+}));
 
 //Serve static files
 app.use(express.static('public'))

@@ -20,12 +20,12 @@ const wechatCrypto = new WechatCrypto(WECOM_TOKEN, WECOM_ENCODING_AES_KEY, WECOM
 const router = Router();
 
 /**
- * 🛠 WeCom URL Verification (GET request)
+ * 🛠 WeCom Webhook Verification (GET request)
+ * ✅ WeCom sends this to verify our server.
  */
-router.get('/callback', async (req: Request, res: Response): Promise<void> => {
+router.get('/webhook', async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('📥 Received WeCom Verification Request');
-    console.log('Query Parameters:', req.query);
+    console.log('📥 Received WeCom Webhook Verification Request:', req.query);
 
     const { msg_signature, timestamp, nonce, echostr } = req.query;
 
@@ -37,20 +37,21 @@ router.get('/callback', async (req: Request, res: Response): Promise<void> => {
     // ✅ Decrypt echostr from WeCom to verify the server
     const decrypted = wechatCrypto.decrypt(echostr as string);
     console.log('🔹 Decrypted echostr:', decrypted.message);
-    
+
     res.status(200).send(decrypted.message);
   } catch (error) {
-    console.error('❌ WeCom Callback Verification Failed:', error);
-    res.status(500).json({ message: 'Failed to verify WeCom callback' });
+    console.error('❌ WeCom Webhook Verification Failed:', error);
+    res.status(500).json({ message: 'Failed to verify WeCom webhook' });
   }
 });
 
 /**
  * 🔄 Handle WeCom approval callback (Webhook)
+ * ✅ WeCom sends procurement approval updates here.
  */
-router.post('/callback', async (req: Request, res: Response): Promise<void> => {
+router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('🔹 WeCom Callback Received:', req.body);
+    console.log('🔹 WeCom Webhook Received:', req.body);
 
     const { approvalId, status } = req.body;
 
@@ -69,7 +70,7 @@ router.post('/callback', async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({ message: 'Approval status updated successfully' });
   } catch (error) {
-    console.error('❌ WeCom Callback Processing Failed:', error);
+    console.error('❌ WeCom Webhook Processing Failed:', error);
     res.status(500).json({ message: 'Failed to process WeCom callback' });
   }
 });
