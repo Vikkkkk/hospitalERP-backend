@@ -9,6 +9,7 @@ export interface AuthenticatedRequest extends Request {
     role: string;
     departmentid: number | null;
     isglobalrole: boolean;
+    wecom_userid?: string; // ✅ Include this since it's in the token
   };
 }
 
@@ -34,23 +35,27 @@ export const authenticateUser = async (
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET as string) as { id: number };
-    const user = await User.findByPk(decoded.id);
+    const decoded = jwt.verify(token, JWT_SECRET as string);
+    console.log('🔹 Decoded Token:', decoded); // ✅ Debugging log
+
+    const user = await User.findByPk((decoded as any).id);
 
     if (!user) {
       res.status(401).json({ message: '无效的令牌' });
       return;
     }
 
+    // ✅ Ensure wecom_userid is correctly assigned (null → undefined)
     req.user = {
       id: user.id,
       username: user.username,
       role: user.role,
       departmentid: user.departmentid,
       isglobalrole: user.isglobalrole,
+      wecom_userid: user.wecom_userid ?? undefined, // ✅ Converts `null` to `undefined`
     };
 
-    next(); // Pass control to the next middleware
+    next(); // Proceed to next middleware
   } catch (error) {
     if (error instanceof TokenExpiredError) {
       console.error('❌ 身份验证失败: 令牌已过期');
@@ -59,8 +64,7 @@ export const authenticateUser = async (
       console.error('❌ 身份验证失败: 令牌无效');
       res.status(401).json({ message: '令牌无效' });
     } else {
-      const err = error as Error;
-      console.error('❌ 身份验证失败:', err.message);
+      console.error('❌ 身份验证失败:', (error as Error).message);
       res.status(401).json({ message: '身份验证失败' });
     }
   }

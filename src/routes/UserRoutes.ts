@@ -3,8 +3,69 @@ import bcrypt from 'bcrypt';
 import { User } from '../models/User';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
 import { authorizeRole } from '../middlewares/RoleCheck';
+import { getWeComUser } from '../services/WeComService';
 
 const router = Router();
+
+/**
+ * 🔗 Link WeCom Account to User
+ * - Requires authentication
+ * - Verifies user’s password
+ * - Ensures WeCom ID isn’t linked to another user
+ */
+router.post('/link-wecom', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { code, password } = req.body;
+
+    if (!code || !password) {
+      res.status(400).json({ message: '缺少必要的参数 (Missing required parameters)' });
+      return;
+    }
+
+    // Retrieve WeCom user info using the OAuth code
+    const wecomUser = await getWeComUser(code);
+    if (!wecomUser || !wecomUser.UserId) {
+      res.status(401).json({ message: 'WeCom认证失败 (WeCom authentication failed)' });
+      return;
+    }
+
+    // Find the authenticated user
+    const user = await User.findByPk(req.user!.id);
+    if (!user) {
+      res.status(404).json({ message: '用户未找到 (User not found)' });
+      return;
+    }
+
+    // Ensure the user isn't already linked to a WeCom account
+    if (user.wecom_userid) {
+      res.status(409).json({ message: '您的账号已绑定WeCom (Your account is already linked to WeCom)' });
+      return;
+    }
+
+    // Verify password before linking
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatch) {
+      res.status(401).json({ message: '密码错误 (Incorrect password)' });
+      return;
+    }
+
+    // Ensure the WeCom user isn't linked to another account
+    const existingUserWithWeCom = await User.findOne({ where: { wecom_userid: wecomUser.UserId } });
+    if (existingUserWithWeCom) {
+      res.status(409).json({ message: '该WeCom账号已绑定至其他用户 (This WeCom account is already linked to another user)' });
+      return;
+    }
+
+    // Link WeCom account to user
+    user.wecom_userid = wecomUser.UserId;
+    await user.save();
+
+    res.status(200).json({ message: 'WeCom账号绑定成功 (WeCom account linked successfully)' });
+  } catch (error) {
+    console.error('❌ WeCom 绑定失败:', (error as Error).message);
+    res.status(500).json({ message: 'WeCom 绑定失败 (Failed to link WeCom account)' });
+  }
+});
 
 // ➕ Create a new user (Only Department Head)
 router.post(
@@ -31,7 +92,7 @@ router.post(
       const newUser = await User.create({
         username,
         role,
-        departmentid: req.user!.departmentid, // Inherit department from the creator
+        departmentid: req.user!.departmentid,
         password_hash: hashedPassword,
         isglobalrole: false,
       });
