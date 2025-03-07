@@ -110,3 +110,18 @@ router.patch(
 );
 
 export default router;
+
+
+
+// Key Features & Functions:
+// Submit Procurement Request
+
+// Only 职员 (Staff), 副部长 (Deputy Minister), 部长 (Minister) can submit.
+// Sends an approval request to the department head (部长).
+// View All Procurement Requests
+
+// Only RootAdmin, 院长 (Dean), 副院长 (Vice Dean), 部长 (Minister) can view all requests.
+// Approve, Reject, or Return Procurement Requests
+
+// Only RootAdmin, 院长 (Dean), 副院长 (Vice Dean) can change request status.
+// Ensures valid statuses before updating.

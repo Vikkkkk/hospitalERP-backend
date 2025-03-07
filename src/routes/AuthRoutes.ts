@@ -1,28 +1,42 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { User } from '../models/User';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
 
 const router = Router();
 
-// Generate JWT token
-const generateToken = (user: any): string => {
-  return jwt.sign(
-    {
-      id: user.id,
-      role: user.role,
-      departmentid: user.departmentid,
-      isglobalrole: user.isglobalrole,
-      username: user.username,
-      wecom_userid: user.wecom_userid, // ✅ Ensure this is included!
-    },
-    process.env.JWT_SECRET || 'supersecretkey', // Store JWT_SECRET in .env
-    { expiresIn: '8h' }
-  );
+// ✅ Ensure JWT_SECRET is properly set
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRY = parseInt(process.env.JWT_EXPIRY || "28800", 10); // ✅ Convert to number
+
+if (!JWT_SECRET) {
+  throw new Error('🚨 Missing JWT_SECRET in environment variables! Server cannot run.');
+}
+
+/**
+ * 🔑 Generate JWT Token
+ * - Includes WeCom ID (if linked)
+ * - Uses secure environment variables
+ */
+const generateToken = (user: User): string => {
+  const payload = {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    departmentid: user.departmentid,
+    isglobalrole: user.isglobalrole,
+    wecom_userid: user.wecom_userid || null, // ✅ Explicitly set null if undefined
+  };
+
+  const options: SignOptions = { expiresIn: JWT_EXPIRY }; // ✅ Ensure correct type
+
+  return jwt.sign(payload, JWT_SECRET as string, options); // ✅ TypeScript safe
 };
 
-// User Login
+/**
+ * 🔐 User Login Route
+ */
 router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { username, password } = req.body;
@@ -34,36 +48,27 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
 
     const user = await User.findOne({ where: { username } });
 
-    console.log("🔍 Login Request:", { username, enteredPassword: password });
+    console.log(`🔍 Login Attempt: ${username}`);
 
     if (!user) {
-      console.warn(`❌ User not found: ${username}`);
+      console.warn(`❌ 用户不存在: ${username}`);
       res.status(404).json({ message: '未找到用户' });
       return;
     }
 
-    console.log("🟢 Found User:", { id: user.id, username: user.username, storedHash: user.password_hash });
-
+    // 🔑 Compare input password with stored hash
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    console.log("comparing passwords", {
-      input: password,
-      stored: user.password_hash,
-      match: isPasswordValid
-    });
-
-    console.log("🔍 Login Attempt:", { username, enteredPassword: password, storedHash: user.password_hash, passwordMatch: isPasswordValid });
-
+    
     if (!isPasswordValid) {
-      console.warn(`❌ Password mismatch for user: ${username}`);
+      console.warn(`❌ 密码错误: ${username}`);
       res.status(401).json({ message: '密码错误' });
       return;
     }
 
-    // ✅ Generate a token with wecom_userid
+    // ✅ Generate JWT Token upon successful login
     const token = generateToken(user);
-    console.log("✅ Token Generated:", token);
+    console.log(`✅ 用户登录成功: ${username}`);
 
-    // ✅ Return full user info including WeCom ID
     res.status(200).json({
       message: '登录成功',
       token,
@@ -73,50 +78,58 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
         role: user.role,
         departmentid: user.departmentid,
         isglobalrole: user.isglobalrole,
-        wecom_userid: user.wecom_userid, // ✅ Include in response
+        wecom_userid: user.wecom_userid || null, // ✅ Ensure it's returned properly
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
     });
   } catch (error) {
     console.error('❌ 登录失败:', error);
-    res.status(500).json({ message: '登录失败' });
+    res.status(500).json({ message: '登录失败，请稍后再试' });
   }
 });
 
-// Verify Token
+/**
+ * ✅ Verify JWT Token (Used for session persistence)
+ */
 router.get('/verify', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     res.status(200).json({
       message: 'Token 有效',
-      user: req.user, // req.user will now be correctly recognized by TypeScript
+      user: req.user, // ✅ Pass authenticated user data
     });
   } catch (error) {
-    console.error('❌ 无法验证Token:', error);
+    console.error('❌ 令牌验证失败:', error);
     res.status(500).json({ message: '无法验证Token' });
   }
 });
 
-// Logout (Frontend should handle token removal)
+/**
+ * 🚪 Logout Route (Handled by frontend token removal)
+ */
 router.post('/logout', authenticateUser, (_req: AuthenticatedRequest, res: Response): void => {
   res.status(200).json({ message: '登出成功，请在客户端清除Token' });
 });
 
-// ✅ Get logged-in user details (for profile page)
-router.get('/me', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+/**
+ * 👤 Get Logged-In User Details
+ * - Retrieves full user data for the profile page.
+ */
+router.get('/me', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const user = await User.findByPk(req.user!.id, {
-      attributes: ['id', 'username', 'role', 'departmentid', 'isglobalrole', 'wecom_userid', 'createdAt', 'updatedAt']
+      attributes: ['id', 'username', 'role', 'departmentid', 'isglobalrole', 'wecom_userid', 'createdAt', 'updatedAt'],
     });
 
     if (!user) {
-      return res.status(404).json({ message: '用户未找到 (User not found)' });
+      res.status(404).json({ message: '用户未找到 (User not found)' });
+      return;
     }
 
     res.status(200).json({ user });
   } catch (error) {
-    console.error('❌ 获取用户信息失败:', (error as Error).message);
-    res.status(500).json({ message: '无法获取用户信息 (Failed to fetch user info)' });
+    console.error('❌ 获取用户信息失败:', error);
+    res.status(500).json({ message: '无法获取用户信息' });
   }
 });
 

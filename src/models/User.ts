@@ -1,5 +1,5 @@
 // backend-api/src/models/User.ts
-import { DataTypes, Model, Optional} from 'sequelize';
+import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
 import { Department } from './Department';
 import * as bcrypt from 'bcrypt';
@@ -7,7 +7,7 @@ import * as bcrypt from 'bcrypt';
 interface UserAttributes {
   id: number;
   username: string;
-  role: string;
+  role: 'Admin' | 'DepartmentHead' | 'Staff'; // ✅ ENUM for valid roles
   departmentid: number | null;
   password_hash: string;
   isglobalrole: boolean;
@@ -24,7 +24,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes>
   implements UserAttributes {
   public id!: number;
   public username!: string;
-  public role!: string;
+  public role!: 'Admin' | 'DepartmentHead' | 'Staff';
   public departmentid!: number | null;
   public password_hash!: string;
   public isglobalrole!: boolean;
@@ -50,10 +50,12 @@ User.init(
     username: {
       type: DataTypes.STRING(255),
       allowNull: false,
+      unique: true, // ✅ Prevent duplicate usernames
     },
     role: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.ENUM('Admin', 'DepartmentHead', 'Staff'), // ✅ Role validation
       allowNull: false,
+      defaultValue: 'Staff', // ✅ Default role assigned if none provided
     },
     departmentid: {
       type: DataTypes.INTEGER,
@@ -99,7 +101,7 @@ User.beforeCreate(async (user: User) => {
 });
 
 User.beforeUpdate(async (user: User) => {
-  if (user.password_hash) {
+  if (user.changed('password_hash')) { // ✅ Prevents double hashing
     const salt = await bcrypt.genSalt(10);
     user.password_hash = await bcrypt.hash(user.password_hash, salt);
   }

@@ -5,6 +5,13 @@ import { User } from '../models/User';
 import { Department } from '../models/Department';
 import { Op } from 'sequelize';
 
+// ✅ Define valid roles as an Enum
+export enum UserRole {
+  Admin = "Admin",
+  DepartmentHead = "DepartmentHead",
+  Staff = "Staff",
+}
+
 export class UserService {
   // 🔑 Hash a password before storing it
   static async hashPassword(plainPassword: string): Promise<string> {
@@ -27,7 +34,7 @@ export class UserService {
   }
 
   // 👥 Get users by role
-  static async getUsersByRole(role: string): Promise<User[]> {
+  static async getUsersByRole(role: UserRole): Promise<User[]> {
     return await User.findAll({
       where: {
         role,
@@ -35,10 +42,15 @@ export class UserService {
     });
   }
 
-  // 🔄 Update user role
-  static async updateUserRole(userId: number, newRole: string): Promise<User | null> {
+  // 🔄 Update user role (Fix applied)
+  static async updateUserRole(userId: number, newRole: UserRole): Promise<User | null> {
     const user = await User.findByPk(userId);
     if (!user) return null;
+
+    // ✅ Ensure newRole is valid
+    if (!Object.values(UserRole).includes(newRole)) {
+      throw new Error("Invalid role assignment");
+    }
 
     user.role = newRole;
     await user.save();

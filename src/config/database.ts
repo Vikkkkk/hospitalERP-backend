@@ -3,11 +3,20 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const sequelize = new Sequelize(process.env.DATABASE_URL as string, {
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error('🚨 DATABASE_URL is missing in environment variables! Server cannot start.');
+  process.exit(1); // Stop execution if no database connection is configured
+}
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+const sequelize = new Sequelize(DATABASE_URL, {
   dialect: 'postgres',
-  logging: false, // Set true for debugging SQL queries
+  logging: isProduction ? false : console.log, // Enable logging in development
   dialectOptions: {
-    ssl: false, // Set to true if using SSL
+    ssl: isProduction ? { require: true, rejectUnauthorized: false } : false,
   },
 });
 

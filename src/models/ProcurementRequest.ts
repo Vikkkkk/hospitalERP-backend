@@ -1,4 +1,3 @@
-// backend-api/src/models/ProcurementRequest.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
 import { Department } from './Department';
@@ -15,10 +14,11 @@ interface ProcurementRequestAttributes {
   quantity: number;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
   approvalId?: string | null;
+  deletedAt?: Date | null; // ✅ Soft deletion support
 }
 
 interface ProcurementRequestCreationAttributes
-  extends Optional<ProcurementRequestAttributes, 'id' | 'description' | 'approvalId'> {}
+  extends Optional<ProcurementRequestAttributes, 'id' | 'description' | 'approvalId' | 'deletedAt'> {}
 
 export class ProcurementRequest
   extends Model<ProcurementRequestAttributes, ProcurementRequestCreationAttributes>
@@ -34,6 +34,7 @@ export class ProcurementRequest
   public quantity!: number;
   public status!: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
   public approvalId?: string | null;
+  public deletedAt?: Date | null; // ✅ Soft deletion support
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -61,6 +62,7 @@ ProcurementRequest.init(
         model: Department,
         key: 'id',
       },
+      onDelete: 'SET NULL', // ✅ Prevent errors if department is deleted
     },
     requestedby: {
       type: DataTypes.INTEGER,
@@ -69,10 +71,12 @@ ProcurementRequest.init(
         model: User,
         key: 'id',
       },
+      onDelete: 'CASCADE', // ✅ Ensures cleanup if user is deleted
     },
     prioritylevel: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.ENUM('Low', 'Medium', 'High'), // ✅ Enforce enum validation
       allowNull: false,
+      defaultValue: 'Medium', // ✅ Set sensible default
     },
     deadlinedate: {
       type: DataTypes.DATE,
@@ -81,17 +85,21 @@ ProcurementRequest.init(
     quantity: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      validate: {
+        min: 1, // ✅ Ensure valid quantity
+      },
     },
     status: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.ENUM('Pending', 'Approved', 'Rejected', 'Completed'), // ✅ Enforce enum validation
       allowNull: false,
       defaultValue: 'Pending',
-      validate: {
-        isIn: [['Pending', 'Approved', 'Rejected', 'Completed']],
-      },
     },
     approvalId: {
       type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   },
@@ -100,5 +108,6 @@ ProcurementRequest.init(
     modelName: 'ProcurementRequest',
     tableName: 'ProcurementRequests',
     timestamps: true,
+    paranoid: true, // ✅ Enables soft delete
   }
 );

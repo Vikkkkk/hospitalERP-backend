@@ -151,3 +151,99 @@ Verified JWT contains correct user attributes.
 Tested failed logins (unlinked account, expired code, invalid token).
 Verified redirections to /login with appropriate error messages.
 
+--------------------------------------------------------------------------------------------------------------------
+📜 Development Log: WeCom Authentication Integration (Frontend & Backend)
+📅 Date: March 6, 2025
+👨‍💻 Feature: WeCom Authentication, Account Binding, and Unbinding
+🔄 Status: ✅ Fully Integrated & Tested
+🛠 Summary of Work Done
+We have fully implemented and tested WeCom authentication, including:
+
+WeCom QR Code Login
+WeCom Account Binding to Existing User
+WeCom Unbinding
+Ensuring Secure Authentication & Session Persistence
+Preventing Unintended Overwrites (e.g., password_hash corruption bug)
+This allows users to log in either via username/password or WeCom scan while ensuring proper linkage between accounts.
+
+🚀 Backend Implementation
+📌 Updated Routes (wecomAuthRoutes.ts)
+1️⃣ WeCom OAuth Callback (/wecom-callback)
+Receives the authorization code from WeCom.
+Fetches WeCom User ID via API.
+Login Mode:
+If WeCom account is linked, user logs in via WeCom.
+If WeCom account is NOT linked, user is redirected with an error.
+Binding Mode (mode=link)
+Redirects user to confirm binding after successful WeCom authentication.
+ts
+Copy
+Edit
+router.get('/wecom-callback', async (req: Request, res: Response) => {
+  try {
+    const { code, mode } = req.query;
+    if (!code) return res.redirect(`${FRONTEND_URL}/login?error=missing_code`);
+
+    const wecomUser = await getWeComUser(code as string);
+    if (!wecomUser || !wecomUser.UserId) {
+      return res.redirect(`${FRONTEND_URL}/login?error=wecom_auth_failed`);
+    }
+
+    if (mode === 'link') {
+      return res.redirect(`${FRONTEND_URL}/profile?mode=confirm&wecom_userid=${wecomUser.UserId}`);
+    }
+
+    const user = await User.findOne({ where: { wecom_userid: wecomUser.UserId } });
+    if (!user) {
+      return res.redirect(`${FRONTEND_URL}/login?error=unlinked_account`);
+    }
+
+    const token = jwt.sign({ ...user.toJSON() }, JWT_SECRET as string, { expiresIn: '8h' });
+    return res.redirect(`${FRONTEND_URL}/login?token=${token}`);
+  } catch (error) {
+    console.error('❌ WeCom 登录失败:', error);
+    return res.redirect(`${FRONTEND_URL}/login?error=internal_error`);
+  }
+});
+2️⃣ Link WeCom Account (/link-wecom)
+Authenticated users can link their WeCom account.
+Securely updates only wecom_userid to prevent accidental overwrites.
+ts
+Copy
+Edit
+router.post('/link-wecom', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { password, wecom_userid } = req.body;
+    const user = await User.findByPk(req.user!.id);
+
+    if (!user) return res.status(404).json({ message: '用户未找到' });
+    if (user.wecom_userid) return res.status(409).json({ message: '账户已绑定 WeCom' });
+
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatch) return res.status(401).json({ message: '密码错误' });
+
+    await User.update({ wecom_userid }, { where: { id: user.id } }); // ✅ Prevent accidental overwrites
+
+    return res.status(200).json({ message: 'WeCom 账号绑定成功' });
+  } catch (error) {
+    return res.status(500).json({ message: '绑定失败' });
+  }
+});
+3️⃣ Unlink WeCom Account (/unlink-wecom)
+Securely removes the WeCom link without affecting any other user data.
+ts
+Copy
+Edit
+router.post('/unlink-wecom', authenticateUser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = await User.findByPk(req.user!.id);
+    if (!user || !user.wecom_userid) return res.status(400).json({ message: '未绑定 WeCom 账号' });
+
+    await User.update({ wecom_userid: null }, { where: { id: user.id } });
+
+    return res.status(200).json({ message: 'WeCom 账号解绑成功' });
+  } catch (error) {
+    return res.status(500).json({ message: '解绑失败' });
+  }
+});
+

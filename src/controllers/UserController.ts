@@ -1,5 +1,3 @@
-// backend-api/src/controllers/UserController.ts
-
 import { Request, Response } from 'express';
 import { User } from '../models/User';
 import bcrypt from 'bcrypt';
@@ -15,6 +13,14 @@ export class UserController {
         return;
       }
 
+      // 🔍 Prevent duplicate usernames
+      const existingUser = await User.findOne({ where: { username } });
+      if (existingUser) {
+        res.status(409).json({ message: '用户名已存在' });
+        return;
+      }
+
+      // ✅ Securely hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const newUser = await User.create({
@@ -25,10 +31,7 @@ export class UserController {
         isglobalrole: isglobalrole || false,
       });
 
-      res.status(201).json({
-        message: '用户创建成功',
-        user: newUser,
-      });
+      res.status(201).json({ message: '用户创建成功', user: newUser });
     } catch (error) {
       console.error('❌ 创建用户失败:', error);
       res.status(500).json({ message: '无法创建用户' });
@@ -38,7 +41,7 @@ export class UserController {
   // 📋 Get all users (Admin Access Only)
   static async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
-      const users = await User.findAll();
+      const users = await User.findAll({ attributes: { exclude: ['password_hash'] } });
       res.status(200).json({ users });
     } catch (error) {
       console.error('❌ 无法获取用户列表:', error);
@@ -68,11 +71,16 @@ export class UserController {
     }
   }
 
-  // 🔑 Reset User Password (Admin Only)
+  // 🔑 Reset User Password (Admin & DeptHead)
   static async resetUserPassword(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { newPassword } = req.body;
+
+      if (!newPassword || newPassword.length < 6) {
+        res.status(400).json({ message: '密码长度必须至少为6个字符' });
+        return;
+      }
 
       const user = await User.findByPk(id);
       if (!user) {
@@ -80,6 +88,7 @@ export class UserController {
         return;
       }
 
+      // ✅ Ensure password is properly hashed
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       user.password_hash = hashedPassword;
       await user.save();
@@ -91,7 +100,7 @@ export class UserController {
     }
   }
 
-  // ❌ Delete a User (RootAdmin Only)
+  // ❌ Soft Delete a User (RootAdmin Only)
   static async deleteUser(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -102,8 +111,10 @@ export class UserController {
         return;
       }
 
-      await user.destroy();
-      res.status(200).json({ message: '用户已删除' });
+      // ✅ Soft delete instead of permanent removal
+      await user.update({ deletedAt: new Date() });
+
+      res.status(200).json({ message: '用户已软删除' });
     } catch (error) {
       console.error('❌ 无法删除用户:', error);
       res.status(500).json({ message: '无法删除用户' });

@@ -30,6 +30,7 @@ Department.init(
     name: {
       type: DataTypes.STRING(255),
       allowNull: false,
+      unique:true,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -47,5 +48,6 @@ Department.init(
     modelName: 'Department',
     tableName: 'Departments',
     timestamps: true,
+    paranoid: true,
   }
 );
