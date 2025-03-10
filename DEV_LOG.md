@@ -247,3 +247,108 @@ router.post('/unlink-wecom', authenticateUser, async (req: AuthenticatedRequest,
   }
 });
 
+--------------------------------------------------------------------------------------------------------------------------------
+
+📅 Sprint Update: Inventory System Overhaul
+Commit Hash: [INSERT_COMMIT_HASH]
+Date: YYYY-MM-DD
+🔹 Summary
+This sprint focused on refactoring, enhancing, and testing the inventory system, improving tracking capabilities, enforcing business logic, and ensuring data integrity. Key improvements include:
+
+📦 Inventory tracking fixes
+🔄 Improved inventory transfer logic
+📝 Enhanced audit logging & transactions
+💾 DB schema updates
+🚀 Preparing for Redux & GraphQL integration
+🔹 How the Inventory System Works
+The inventory system allows tracking and managing stock movement within the warehouse and departments. It consists of inventory items, transactions, and restocking requests.
+
+📦 Inventory Flow
+Warehouse Storage (departmentId = NULL)
+
+The main warehouse stores all items before distribution.
+Transfers move items from warehouse → departments.
+Warehouse items define their category, unit, minimum stock levels.
+Department Storage (departmentId = X)
+
+Departments receive transferred stock.
+Staff can update stock usage to track consumption.
+Departments can request restocking if stock is low.
+Inventory Transactions (InventoryTransaction Table)
+
+Every transfer, usage update, and restock request is logged.
+Transactions now store:
+itemname
+category
+performedby
+transactiontype (Transfer | Usage | Restocking)
+🔹 API Endpoints & Their Functionality
+📦 Inventory Management
+Method	Route	Description
+GET	/api/inventory/	Fetch all inventory items with pagination.
+POST	/api/inventory/add	Add a new inventory item (with custom category).
+🔄 Stock Movement
+Method	Route	Description
+POST	/api/inventory/transfer	Transfer stock from warehouse → department.
+PATCH	/api/inventory/update	Update daily stock usage (reduces department stock).
+POST	/api/inventory/restock/:id	Request restocking for a low-stock item.
+🔹 Database Changes
+Refactored Inventory table:
+
+Changed category from ENUM → String (flexible categories).
+Added lastRestocked to track restocking events.
+Updated InventoryTransaction table:
+
+Added itemname and category fields to improve tracking.
+Logs all inventory-related transactions.
+Migration Fixes:
+
+Removed old migration files and re-initialized schema.
+Fixed deletedAt issues.
+🔹 Backend Changes
+Refactored InventoryRoutes.ts:
+
+Fixed transfer duplication issue.
+Implemented findOrCreate logic for department inventory.
+Improved error handling and validation.
+Standardized category inheritance from warehouse.
+Enhanced Audit Logging (AuditService.ts):
+
+Logs every inventory transaction.
+Improved error handling.
+Seeder Fixes:
+
+Fixed inventoryTransactionSeeder (prevented null itemname).
+Removed redundant fake transaction data.
+🔹 API Testing & Validation
+✅ Successfully tested the following operations:
+
+✅ POST /api/inventory/transfer (Transfer stock)
+✅ PATCH /api/inventory/update (Update stock usage)
+✅ POST /api/inventory/restock/:id (Request restocking)
+✅ POST /api/inventory/add (Add new inventory item)
+✅ GET /api/inventory/ (Fetch inventory list)
+✅ Fixed the following issues:
+
+NaN quantity issue when updating inventory.
+departmentId vs departmentid mismatch in requests.
+Warehouse items inherit category and unit.
+🚀 Next Steps
+Commit & push these changes.
+Begin Redux & GraphQL implementation:
+Redux for state management in frontend.
+GraphQL for optimized API queries & mutations.
+📌 Commit Message
+md
+Copy
+Edit
+🔄 Inventory System Overhaul:
+- Fixed stock transfer logic with `findOrCreate`
+- Improved `InventoryTransaction` tracking with `itemname` & `category`
+- Updated DB schema: `category` → String, added `lastRestocked`
+- Fixed `NaN` quantity bug in usage updates
+- Standardized inventory actions across departments
+- Removed unnecessary fake transaction seed data
+- Validated all inventory APIs ✅
+- Preparing for Redux & GraphQL implementation 🚀
+

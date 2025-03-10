@@ -28,7 +28,7 @@ export class UserService {
   static async getUsersByDepartment(departmentId: number): Promise<User[]> {
     return await User.findAll({
       where: {
-        departmentid: departmentId,
+        departmentId: departmentId,
       },
     });
   }

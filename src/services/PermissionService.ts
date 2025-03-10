@@ -22,7 +22,7 @@ export class PermissionService {
           where: {
             role: user.role,
             module,
-            departmentid: null, // Global permissions
+            departmentId: null, // Global permissions
           },
         });
 
@@ -36,7 +36,7 @@ export class PermissionService {
         where: {
           role: user.role,
           module,
-          departmentid: user.departmentid,
+          departmentId: user.departmentId,
         },
       });
 
@@ -54,12 +54,12 @@ export class PermissionService {
   /**
    * ➕ Grant permission for a role in a department
    */
-  static async grantPermission(role: string, module: string, departmentid: number | null): Promise<void> {
+  static async grantPermission(role: string, module: string, departmentId: number | null): Promise<void> {
     try {
       await Permissions.create({
         role,
         module,
-        departmentid,
+        departmentId,
         canaccess: true,
       });
 
@@ -72,10 +72,10 @@ export class PermissionService {
   /**
    * ❌ Revoke permission for a role in a department
    */
-  static async revokePermission(role: string, module: string, departmentid: number | null): Promise<void> {
+  static async revokePermission(role: string, module: string, departmentId: number | null): Promise<void> {
     try {
       const permission = await Permissions.findOne({
-        where: { role, module, departmentid },
+        where: { role, module, departmentId },
       });
 
       if (permission) {

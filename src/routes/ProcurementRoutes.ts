@@ -10,7 +10,7 @@ const router = Router();
 interface ProcurementRequestBody {
   title: string;
   description?: string;
-  departmentid: number;
+  departmentId: number;
   prioritylevel: 'Low' | 'Medium' | 'High';
   deadlinedate: Date;
   quantity: number;
@@ -26,7 +26,7 @@ router.post(
       const {
         title,
         description,
-        departmentid,
+        departmentId,
         prioritylevel,
         deadlinedate,
         quantity,
@@ -36,7 +36,7 @@ router.post(
       const newRequest = await ProcurementRequest.create({
         title,
         description,
-        departmentid,
+        departmentId,
         prioritylevel,
         deadlinedate,
         quantity,

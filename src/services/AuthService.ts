@@ -32,7 +32,7 @@ export class AuthService {
           id: user.id,
           username: user.username,
           role: user.role,
-          departmentid: user.departmentid,
+          departmentId: user.departmentId,
           isglobalrole: user.isglobalrole,
         },
         JWT_SECRET,

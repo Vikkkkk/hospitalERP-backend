@@ -17,8 +17,8 @@ export class ReportService {
       return inventoryData.map((item) => ({
         itemname: item.itemname,
         quantity: item.quantity,
-        minimumStockLevel: item.minimumstocklevel,
-        departmentId: item.departmentid,
+        minimumStockLevel: item.minimumStockLevel,
+        departmentId: item.departmentId,
         lastRestocked: item.lastRestocked,
       }));
     } catch (error) {
@@ -38,7 +38,7 @@ export class ReportService {
 
       return procurementData.map((request) => ({
         title: request.title,
-        departmentId: request.departmentid,
+        departmentId: request.departmentId,
         quantity: request.quantity,
         status: request.status,
         deadlineDate: request.deadlinedate,
@@ -59,7 +59,7 @@ export class ReportService {
       return userData.map((user) => ({
         username: user.username,
         role: user.role,
-        departmentId: user.departmentid,
+        departmentId: user.departmentId,
         globalRole: user.isglobalrole ? 'Yes' : 'No',
       }));
     } catch (error) {

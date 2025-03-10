@@ -31,9 +31,9 @@ export class DepartmentService {
   /**
    * 🔄 Update department information
    */
-  static async updateDepartment(departmentid: number, name: string) {
+  static async updateDepartment(departmentId: number, name: string) {
     try {
-      const department = await Department.findByPk(departmentid);
+      const department = await Department.findByPk(departmentId);
       if (!department) {
         throw new Error('未找到指定的部门');
       }
@@ -50,9 +50,9 @@ export class DepartmentService {
   /**
    * ❌ Delete a department
    */
-  static async deleteDepartment(departmentid: number) {
+  static async deleteDepartment(departmentId: number) {
     try {
-      const department = await Department.findByPk(departmentid);
+      const department = await Department.findByPk(departmentId);
       if (!department) {
         throw new Error('未找到指定的部门');
       }
@@ -68,10 +68,10 @@ export class DepartmentService {
   /**
    * 🔗 Get all users in a specific department
    */
-  static async getUsersByDepartment(departmentid: number) {
+  static async getUsersByDepartment(departmentId: number) {
     try {
       const users = await User.findAll({
-        where: { departmentid },
+        where: { departmentId },
       });
       return users;
     } catch (error) {

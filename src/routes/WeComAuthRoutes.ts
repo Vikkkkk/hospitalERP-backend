@@ -66,7 +66,7 @@ router.get('/wecom-callback', async (req: Request, res: Response): Promise<void>
         id: user.id,
         username: user.username,
         role: user.role,
-        departmentid: user.departmentid,
+        departmentId: user.departmentId,
         isglobalrole: user.isglobalrole,
         wecom_userid: user.wecom_userid,
       },

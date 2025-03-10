@@ -7,7 +7,7 @@ export interface AuthenticatedRequest extends Request {
     id: number;
     username: string;
     role: string;
-    departmentid: number | null;
+    departmentId: number | null;
     isglobalrole: boolean;
     wecom_userid?: string;
   };
@@ -58,7 +58,7 @@ export const authenticateUser = async (
       id: user.id,
       username: user.username,
       role: user.role,
-      departmentid: user.departmentid,
+      departmentId: user.departmentId,
       isglobalrole: user.isglobalrole,
       wecom_userid: user.wecom_userid ?? undefined, // ✅ Converts `null` to `undefined`
     };

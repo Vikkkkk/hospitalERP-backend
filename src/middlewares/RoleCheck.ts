@@ -15,9 +15,9 @@ export const authorizeRole = (allowedRoles: string[]) => {
       return res.status(403).json({ message: '未经授权的访问' });
     }
 
-    const { role, departmentid, isglobalrole, username } = req.user;
+    const { role, departmentId, isglobalrole, username } = req.user;
 
-    console.log(`🔍 RoleCheck: User ${username} (Role: ${role}, Dept: ${departmentid}) attempting access`);
+    console.log(`🔍 RoleCheck: User ${username} (Role: ${role}, Dept: ${departmentId}) attempting access`);
 
     // ✅ RootAdmin & Global Roles: Full Access
     if (isglobalrole || allowedRoles.includes(role)) {
@@ -38,13 +38,13 @@ export const authorizeRole = (allowedRoles: string[]) => {
     const permission = await Permissions.findOne({
       where: {
         role,
-        departmentid: departmentid || null, // Handle null departmentid as wildcard
+        departmentId: departmentId || null, // Handle null departmentId as wildcard
         canaccess: true,
       },
     });
 
     if (!permission) {
-      console.warn(`🚨 Access Denied: User ${username} (Role: ${role}, Dept: ${departmentid}) lacks required permissions`);
+      console.warn(`🚨 Access Denied: User ${username} (Role: ${role}, Dept: ${departmentId}) lacks required permissions`);
       return res.status(403).json({ message: '无权限访问该模块' });
     }
 
@@ -80,9 +80,9 @@ export const authorizeAction = (requiredAction: string) => {
       return res.status(403).json({ message: '未经授权的访问 (Unauthorized Access)' });
     }
 
-    const { role, departmentid, isglobalrole, username } = req.user;
+    const { role, departmentId, isglobalrole, username } = req.user;
 
-    console.log(`🔍 RoleCheck: User ${username} (Role: ${role}, Dept: ${departmentid}) attempting action: ${requiredAction}`);
+    console.log(`🔍 RoleCheck: User ${username} (Role: ${role}, Dept: ${departmentId}) attempting action: ${requiredAction}`);
 
     // ✅ RootAdmin always has full access
     if (isglobalrole) {
@@ -94,13 +94,13 @@ export const authorizeAction = (requiredAction: string) => {
     const permission = await Permissions.findOne({
       where: {
         role,
-        departmentid: departmentid || null, // Handle null departmentid as wildcard
+        departmentId: departmentId || null, // Handle null departmentId as wildcard
         [requiredAction]: true,  // 🔥 Check if action is allowed
       },
     });
 
     if (!permission) {
-      console.warn(`🚨 Access Denied: User ${username} (Role: ${role}, Dept: ${departmentid}) lacks permission for ${requiredAction}`);
+      console.warn(`🚨 Access Denied: User ${username} (Role: ${role}, Dept: ${departmentId}) lacks permission for ${requiredAction}`);
       return res.status(403).json({ message: '无权限执行该操作 (No permission to perform this action)' });
     }
 

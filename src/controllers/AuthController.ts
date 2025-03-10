@@ -35,7 +35,7 @@ export class AuthController {
         {
           id: user.id,
           role: user.role,
-          departmentid: user.departmentid,
+          departmentId: user.departmentId,
           isglobalrole: user.isglobalrole,
         },
         SECRET_KEY,
@@ -49,7 +49,7 @@ export class AuthController {
           id: user.id,
           username: user.username,
           role: user.role,
-          departmentid: user.departmentid,
+          departmentId: user.departmentId,
         },
       });
     } catch (error) {
@@ -87,7 +87,7 @@ export class AuthController {
         {
           id: user.id,
           role: user.role,
-          departmentid: user.departmentid,
+          departmentId: user.departmentId,
           isglobalrole: user.isglobalrole,
         },
         SECRET_KEY,
@@ -101,7 +101,7 @@ export class AuthController {
           id: user.id,
           username: user.username,
           role: user.role,
-          departmentid: user.departmentid,
+          departmentId: user.departmentId,
         },
       });
     } catch (error) {

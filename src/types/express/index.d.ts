@@ -7,7 +7,7 @@ declare module 'express-serve-static-core' {
       id: number;
       username: string;
       role: string;
-      departmentid: number | null;
+      departmentId: number | null;
       isglobalrole: boolean;
       createdAt?: Date;
       updatedAt?: Date;

@@ -6,7 +6,7 @@ export class UserController {
   // ✅ Create a new user (Only by Department Heads or Admins)
   static async createUser(req: Request, res: Response): Promise<void> {
     try {
-      const { username, role, password, departmentid, isglobalrole } = req.body;
+      const { username, role, password, departmentId, isglobalrole } = req.body;
 
       if (!username || !role || !password) {
         res.status(400).json({ message: '请填写所有必填字段' });
@@ -27,7 +27,7 @@ export class UserController {
         username,
         role,
         password_hash: hashedPassword,
-        departmentid: departmentid || null,
+        departmentId: departmentId || null,
         isglobalrole: isglobalrole || false,
       });
 

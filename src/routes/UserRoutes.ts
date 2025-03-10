@@ -85,7 +85,7 @@ router.post(
       const newUser = await User.create({
         username,
         role,
-        departmentid: req.user!.departmentid,
+        departmentId: req.user!.departmentId,
         password_hash: hashedPassword,
         isglobalrole: false,
       });

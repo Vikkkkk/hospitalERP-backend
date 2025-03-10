@@ -24,7 +24,7 @@ const generateToken = (user: User): string => {
     id: user.id,
     username: user.username,
     role: user.role,
-    departmentid: user.departmentid,
+    departmentId: user.departmentId,
     isglobalrole: user.isglobalrole,
     wecom_userid: user.wecom_userid || null, // ✅ Explicitly set null if undefined
   };
@@ -76,7 +76,7 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
         id: user.id,
         username: user.username,
         role: user.role,
-        departmentid: user.departmentid,
+        departmentId: user.departmentId,
         isglobalrole: user.isglobalrole,
         wecom_userid: user.wecom_userid || null, // ✅ Ensure it's returned properly
         createdAt: user.createdAt,
@@ -118,7 +118,7 @@ router.post('/logout', authenticateUser, (_req: AuthenticatedRequest, res: Respo
 router.get('/me', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const user = await User.findByPk(req.user!.id, {
-      attributes: ['id', 'username', 'role', 'departmentid', 'isglobalrole', 'wecom_userid', 'createdAt', 'updatedAt'],
+      attributes: ['id', 'username', 'role', 'departmentId', 'isglobalrole', 'wecom_userid', 'createdAt', 'updatedAt'],
     });
 
     if (!user) {

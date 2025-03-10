@@ -27,7 +27,7 @@ export class ProcurementController {
       const newRequest = await ProcurementRequest.create({
         title,
         description,
-        departmentid: req.user!.departmentid,
+        departmentId: req.user!.departmentId,
         prioritylevel,
         deadlinedate,
         quantity,

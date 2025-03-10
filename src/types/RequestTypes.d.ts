@@ -7,7 +7,7 @@ export interface AuthenticatedUser {
   id: number;
   username: string;
   role: string;
-  departmentid: number | null;
+  departmentId: number | null;
   isglobalrole: boolean;
 }
 

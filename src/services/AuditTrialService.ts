@@ -15,7 +15,7 @@ export class AuditTrailService {
   static recordAction(req: Request, action: string, entity: string, entityId: number): void {
     const timestamp = new Date().toISOString();
     const userId = req.user ? req.user.id : 'Unknown';
-    const departmentId = req.user ? req.user.departmentid : 'Unknown';
+    const departmentId = req.user ? req.user.departmentId : 'Unknown';
     const logEntry = `[${timestamp}] User ID: ${userId}, Department ID: ${departmentId}, Action: ${action}, Entity: ${entity}, Entity ID: ${entityId}\n`;
 
     console.log(`📝 Audit: ${logEntry}`);

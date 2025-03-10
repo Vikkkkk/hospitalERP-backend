@@ -12,7 +12,7 @@ router.post(
   authorizeRole(['RootAdmin', '院长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { role, module, canaccess, departmentid } = req.body;
+      const { role, module, canaccess, departmentId } = req.body;
 
       if (!role || !module) {
         res.status(400).json({ message: '角色和模块名称是必填项' });
@@ -20,7 +20,7 @@ router.post(
       }
 
       const existingPermission = await Permissions.findOne({
-        where: { role, module, departmentid },
+        where: { role, module, departmentId },
       });
 
       if (existingPermission) {
@@ -32,7 +32,7 @@ router.post(
         role,
         module,
         canaccess: canaccess !== undefined ? canaccess : true,
-        departmentid,
+        departmentId,
       });
 
       res.status(201).json({

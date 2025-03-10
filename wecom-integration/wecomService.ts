@@ -1,7 +1,7 @@
 // wecom-integration/wecomService.ts
 
 import axios from 'axios';
-import { wecomConfig } from '../backend-api/src/config/wecomConfig';
+import { wecomConfig } from '../src/config/wecomConfig';
 
 const { corpId, agentId, secret } = wecomConfig;
 

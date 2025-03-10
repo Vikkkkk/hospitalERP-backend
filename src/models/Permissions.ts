@@ -8,11 +8,11 @@ interface PermissionsAttributes {
   role: string;
   module: string;
   canaccess: boolean;
-  departmentid?: number | null;
+  departmentId?: number | null;
 }
 
 interface PermissionsCreationAttributes
-  extends Optional<PermissionsAttributes, 'id' | 'departmentid'> {}
+  extends Optional<PermissionsAttributes, 'id' | 'departmentId'> {}
 
 export class Permissions
   extends Model<PermissionsAttributes, PermissionsCreationAttributes>
@@ -21,7 +21,7 @@ export class Permissions
   public role!: string;
   public module!: string;
   public canaccess!: boolean;
-  public departmentid!: number | null;
+  public departmentId!: number | null;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -48,7 +48,7 @@ Permissions.init(
       allowNull: false,
       defaultValue: true,
     },
-    departmentid: {
+    departmentId: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {

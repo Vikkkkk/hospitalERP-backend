@@ -8,7 +8,7 @@ export class PermissionController {
   // ✅ Grant permission to a role (RootAdmin / 院长)
   static async grantPermission(req: Request, res: Response): Promise<void> {
     try {
-      const { role, module, departmentid, canaccess } = req.body;
+      const { role, module, departmentId, canaccess } = req.body;
 
       if (!role || !module) {
         res.status(400).json({ message: '角色和模块是必填项' });
@@ -18,7 +18,7 @@ export class PermissionController {
       const newPermission = await Permissions.create({
         role,
         module,
-        departmentid: departmentid || null,
+        departmentId: departmentId || null,
         canaccess: canaccess ?? true, // Default to true if not provided
       });
 

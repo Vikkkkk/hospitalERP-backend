@@ -8,7 +8,7 @@ interface UserAttributes {
   id: number;
   username: string;
   role: 'Admin' | 'DepartmentHead' | 'Staff'; // ✅ ENUM for valid roles
-  departmentid: number | null;
+  departmentId: number | null;
   password_hash: string;
   isglobalrole: boolean;
   wecom_userid: string | null;
@@ -18,14 +18,14 @@ interface UserAttributes {
 }
 
 interface UserCreationAttributes
-  extends Optional<UserAttributes, 'id' | 'departmentid' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
+  extends Optional<UserAttributes, 'id' | 'departmentId' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes>
   implements UserAttributes {
   public id!: number;
   public username!: string;
   public role!: 'Admin' | 'DepartmentHead' | 'Staff';
-  public departmentid!: number | null;
+  public departmentId!: number | null;
   public password_hash!: string;
   public isglobalrole!: boolean;
   public wecom_userid!: string | null;
@@ -57,7 +57,7 @@ User.init(
       allowNull: false,
       defaultValue: 'Staff', // ✅ Default role assigned if none provided
     },
-    departmentid: {
+    departmentId: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {

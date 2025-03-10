@@ -15,7 +15,7 @@ export const checkAndTriggerRestocking = async (): Promise<void> => {
     // Find all items with quantity below the minimum stock level
     const lowStockItems = await Inventory.findAll({
       where: {
-        quantity: { [Op.lt]: sequelize.col('minimumstocklevel') }, // Use consistent column name
+        quantity: { [Op.lt]: sequelize.col('minimumStockLevel') }, // Use consistent column name
       },
     });
 
@@ -30,18 +30,18 @@ export const checkAndTriggerRestocking = async (): Promise<void> => {
 
       // Create a new restocking request if no pending request exists
       if (!existingRequest) {
-        const department = item.departmentid
-          ? await Department.findByPk(item.departmentid)
+        const department = item.departmentId
+          ? await Department.findByPk(item.departmentId)
           : null;
 
         await ProcurementRequest.create({
           title: `Restock: ${item.itemname}`,
           description: `Automatically triggered restocking for ${item.itemname}.`,
-          departmentid: item.departmentid || null,
+          departmentId: item.departmentId || null,
           requestedby: 1, // System user ID placeholder
           prioritylevel: 'High',
           deadlinedate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3-day deadline
-          quantity: item.minimumstocklevel - item.quantity, // Request enough to reach minimum
+          quantity: item.minimumStockLevel - item.quantity, // Request enough to reach minimum
           status: 'Pending',
         });
 

@@ -7,7 +7,7 @@ interface ProcurementRequestAttributes {
   id: number;
   title: string;
   description?: string;
-  departmentid: number | null;
+  departmentId: number | null;
   requestedby: number;
   prioritylevel: 'Low' | 'Medium' | 'High';
   deadlinedate: Date;
@@ -27,7 +27,7 @@ export class ProcurementRequest
   public id!: number;
   public title!: string;
   public description?: string;
-  public departmentid!: number | null;
+  public departmentId!: number | null;
   public requestedby!: number;
   public prioritylevel!: 'Low' | 'Medium' | 'High';
   public deadlinedate!: Date;
@@ -55,7 +55,7 @@ ProcurementRequest.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    departmentid: {
+    departmentId: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
