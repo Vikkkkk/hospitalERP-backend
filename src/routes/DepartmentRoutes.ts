@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import { Department } from '../models/Department';
+import { User } from '../models/User';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
 import { authorizeRole } from '../middlewares/RoleCheck';
 
@@ -10,7 +11,7 @@ router.post(
   '/create',
   authenticateUser,
   authorizeRole(['RootAdmin', 'Admin']),
-  async (req: AuthenticatedRequest, res: Response):Promise<any> => {
+  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { name } = req.body;
 
@@ -56,7 +57,7 @@ router.patch(
   '/:id',
   authenticateUser,
   authorizeRole(['RootAdmin', 'Admin']),
-  async (req: AuthenticatedRequest, res: Response):Promise<any> => {
+  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { id } = req.params;
       const { name } = req.body;
@@ -77,12 +78,50 @@ router.patch(
   }
 );
 
+// 📌 Assign department head (RootAdmin, Admin only)
+router.put(
+  '/assign-head',
+  authenticateUser,
+  authorizeRole(['RootAdmin', 'Admin']),
+  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+    try {
+      const { departmentId, headId } = req.body;
+
+      // Check if department exists
+      const department = await Department.findByPk(departmentId);
+      if (!department) {
+        return res.status(404).json({ message: '未找到该部门' });
+      }
+
+      // Check if user exists and is eligible
+      const user = await User.findByPk(headId);
+      if (!user) {
+        return res.status(404).json({ message: '未找到该用户' });
+      }
+
+      // Ensure the user belongs to the same department
+      if (user.departmentId !== department.id) {
+        return res.status(400).json({ message: '用户不属于此部门，无法设为部门负责人' });
+      }
+
+      // Assign head
+      department.headId = headId;
+      await department.save();
+
+      res.status(200).json({ message: '部门负责人已分配', department });
+    } catch (error) {
+      console.error('❌ 设定部门负责人失败:', error);
+      res.status(500).json({ message: '无法设定部门负责人' });
+    }
+  }
+);
+
 // 📌 Delete a department (RootAdmin, Admin only)
 router.delete(
   '/:id',
   authenticateUser,
   authorizeRole(['RootAdmin', 'Admin']),
-  async (req: AuthenticatedRequest, res: Response):Promise<any> => {
+  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { id } = req.params;
 

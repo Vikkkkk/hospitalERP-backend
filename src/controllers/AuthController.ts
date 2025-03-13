@@ -111,6 +111,42 @@ export class AuthController {
     }
   }
 
+
+/**
+   * 🔄 **Update User Info (WeCom Binding & Profile Updates)**
+   */
+static async updateUser(req: Request, res: Response):Promise<any> {
+  try {
+    const { id } = (req as any).user; // Get authenticated user ID
+    const { wecom_userid, username } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ message: '用户 ID 无效' });
+    }
+
+    // ✅ Find the user
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' });
+    }
+
+    // ✅ Allow updates for WeCom ID & other fields
+    if (wecom_userid) user.wecom_userid = wecom_userid;
+    if (username) user.username = username;
+
+    await user.save();
+
+    res.status(200).json({
+      message: '用户信息更新成功',
+      user,
+    });
+  } catch (error) {
+    console.error('❌ 用户信息更新失败:', error);
+    res.status(500).json({ message: '无法更新用户信息' });
+  }
+}
+
+
   /**
    * 🔒 User Logout
    */

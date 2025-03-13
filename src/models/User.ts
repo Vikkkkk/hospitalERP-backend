@@ -1,30 +1,28 @@
 // backend-api/src/models/User.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
-import { Department } from './Department';
 import * as bcrypt from 'bcrypt';
 
 interface UserAttributes {
   id: number;
   username: string;
-  role: 'Admin' | 'DepartmentHead' | 'Staff'; // ✅ ENUM for valid roles
+  role: 'RootAdmin' | 'Admin' | 'DepartmentHead' | 'Staff'; // ✅ Expanded ENUM roles
   departmentId: number | null;
   password_hash: string;
   isglobalrole: boolean;
   wecom_userid: string | null;
   createdAt?: Date;
   updatedAt?: Date;
-  deletedAt?: Date; // ✅ Added for soft deletion
+  deletedAt?: Date;
 }
 
 interface UserCreationAttributes
   extends Optional<UserAttributes, 'id' | 'departmentId' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
-export class User extends Model<UserAttributes, UserCreationAttributes>
-  implements UserAttributes {
+export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
   public username!: string;
-  public role!: 'Admin' | 'DepartmentHead' | 'Staff';
+  public role!: 'RootAdmin' | 'Admin' | 'DepartmentHead' | 'Staff';
   public departmentId!: number | null;
   public password_hash!: string;
   public isglobalrole!: boolean;
@@ -53,7 +51,7 @@ User.init(
       unique: true, // ✅ Prevent duplicate usernames
     },
     role: {
-      type: DataTypes.ENUM('Admin', 'DepartmentHead', 'Staff'), // ✅ Role validation
+      type: DataTypes.ENUM('RootAdmin', 'Admin', 'DepartmentHead', 'Staff'), // ✅ Role validation
       allowNull: false,
       defaultValue: 'Staff', // ✅ Default role assigned if none provided
     },
@@ -61,11 +59,12 @@ User.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: Department,
+        model: `Department`,
         key: 'id',
       },
+      onDelete: 'SET NULL',
     },
-    password_hash: {  // ✅ Renamed from `password`
+    password_hash: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
@@ -78,7 +77,7 @@ User.init(
       allowNull: true,
       unique: true,
     },
-    deletedAt: { // ✅ Added to support soft delete
+    deletedAt: {
       type: DataTypes.DATE,
       allowNull: true,
     },
@@ -101,10 +100,12 @@ User.beforeCreate(async (user: User) => {
 });
 
 User.beforeUpdate(async (user: User) => {
-  if (user.changed('password_hash')) { // ✅ Prevents double hashing
+  if (user.changed('password_hash')) {
     const salt = await bcrypt.genSalt(10);
     user.password_hash = await bcrypt.hash(user.password_hash, salt);
   }
 });
+
+
 
 export default User;

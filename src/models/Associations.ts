@@ -4,15 +4,15 @@ import { Department } from './Department';
 import { Inventory } from './Inventory';
 import { InventoryTransaction } from './InventoryTransaction';
 
-// Users belong to Departments
-User.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
-Department.hasMany(User, { foreignKey: 'departmentId', as: 'users' });
+// ✅ Users belong to Departments (Renamed alias)
+User.belongsTo(Department, { foreignKey: 'departmentId', as: 'userDepartment' });
+Department.hasMany(User, { foreignKey: 'departmentId', as: 'staff' });
 
-// Inventory belongs to Departments
-Inventory.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
+// ✅ Inventory belongs to Departments (Renamed alias)
+Inventory.belongsTo(Department, { foreignKey: 'departmentId', as: 'inventoryDepartment' });
 Department.hasMany(Inventory, { foreignKey: 'departmentId', as: 'inventory' });
 
-// Inventory Transactions
+// ✅ Inventory Transactions
 InventoryTransaction.belongsTo(Inventory, { foreignKey: 'inventoryid', as: 'inventory' });
 Inventory.hasMany(InventoryTransaction, { foreignKey: 'inventoryid', as: 'transactions' });
 

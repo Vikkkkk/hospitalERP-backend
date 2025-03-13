@@ -2,20 +2,23 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
 
+
 interface DepartmentAttributes {
   id: number;
   name: string;
+  headId?: number | null; // ✅ Add headId field
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 interface DepartmentCreationAttributes
-  extends Optional<DepartmentAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<DepartmentAttributes, 'id' | 'headId' | 'createdAt' | 'updatedAt'> {}
 
 export class Department extends Model<DepartmentAttributes, DepartmentCreationAttributes>
   implements DepartmentAttributes {
   public id!: number;
   public name!: string;
+  public headId!: number | null; // ✅ Add headId property
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -30,7 +33,16 @@ Department.init(
     name: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      unique:true,
+      unique: true,
+    },
+    headId: { // ✅ Add headId to the schema
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users', // Reference the Users table
+        key: 'id',
+      },
+      onDelete: 'SET NULL',
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -51,3 +63,5 @@ Department.init(
     paranoid: true,
   }
 );
+
+export default Department;

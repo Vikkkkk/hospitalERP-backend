@@ -115,9 +115,4 @@ Inventory.init(
   }
 );
 
-Inventory.belongsTo(Department, {
-  foreignKey: 'departmentId',
-  as: 'department',
-});
-
 export default Inventory;

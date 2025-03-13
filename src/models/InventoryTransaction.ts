@@ -1,10 +1,10 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import { sequelize } from '../config/database';
-import { Inventory } from './Inventory';
-import { Department } from './Department';
-import { User } from './User';
+import Inventory from './Inventory';
+import Department from './Department';
+import User from './User';
 
-// ✅ Define ENUM as a constant array (Allows easier modifications later)
+// ✅ Define ENUM as a constant array (Easier to modify later)
 const TRANSACTION_TYPES = ['Transfer', 'Usage', 'Restocking'] as const;
 
 interface InventoryTransactionAttributes {
@@ -49,7 +49,7 @@ InventoryTransaction.init(
       primaryKey: true,
       autoIncrement: true,
     },
-    itemname:{
+    itemname: {
       type: DataTypes.STRING,
       allowNull: false, 
     },
@@ -111,20 +111,20 @@ InventoryTransaction.init(
   }
 );
 
-// ✅ Define Associations
+// ✅ Define Associations (with unique aliases)
 InventoryTransaction.belongsTo(Inventory, {
   foreignKey: 'inventoryid',
-  as: 'inventory',
+  as: 'transactionInventory', // 🔥 Updated alias to prevent conflicts
 });
 
 InventoryTransaction.belongsTo(Department, {
   foreignKey: 'departmentId',
-  as: 'department',
+  as: 'transactionDepartment', // 🔥 Updated alias to prevent conflicts
 });
 
 InventoryTransaction.belongsTo(User, {
   foreignKey: 'performedby',
-  as: 'performedByUser',
+  as: 'transactionUser', // 🔥 Updated alias to prevent conflicts
 });
 
 export default InventoryTransaction;

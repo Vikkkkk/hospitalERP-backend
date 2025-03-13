@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { User } from '../models/User';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
+import { AuthController } from '../controllers/AuthController';
 
 const router = Router();
 
@@ -132,5 +133,9 @@ router.get('/me', authenticateUser, async (req: AuthenticatedRequest, res: Respo
     res.status(500).json({ message: '无法获取用户信息' });
   }
 });
+
+
+// ✨ New: Update user info (WeCom Binding, Profile Updates)
+router.patch('/update', authenticateUser, AuthController.updateUser);
 
 export default router;

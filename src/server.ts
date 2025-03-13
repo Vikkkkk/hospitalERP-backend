@@ -1,6 +1,7 @@
 import express, { Request, Response, Application } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import './models/Associations'; // ✅ Ensure this is loaded after models
 
 import authRoutes from './routes/AuthRoutes';
 import userRoutes from './routes/UserRoutes';
