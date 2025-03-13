@@ -4,33 +4,26 @@
 ├── ai-restocking
 │   ├── restockingService.ts
 │   └── trigger.ts
+├── backend_notes.md
 ├── database
 │   ├── config
 │   │   └── config.js
 │   ├── migrations
-│   │   ├── 20250222010100-create-tables.js
-│   │   ├── 20250225024211-add-timestamps-to-users.js
-│   │   ├── 20250225024839-add-timestamps-to-permissions.js
-│   │   ├── 20250226071940-create-procurement-requests.js
-│   │   └── 20250226094517-add-wecom-userid-to-users.js
+│   │   └── 20250222010100-create-tables.js
 │   ├── models
 │   │   └── index.js
 │   ├── schema.sql
 │   └── seeders
-│       ├── 20250222010200-seed-default-data.js
-│       ├── 20250225022750-initial-data.js
-│       └── 20250226072405-seed-procurement-requests.js
-|
+│       ├── 20230101000001-userSeeder.js
+│       ├── 20230101000002-departmentSeeder.js
+│       ├── 20230101000003-permissionSeeder.js
+│       └── 20230101000004-InventorySeeder.js
 ├── logs
 │   └── application.log
 ├── package.json
 ├── project_structure.txt
 ├── public
 │   └── WW_verify_brw4r5sfIdN6OhyC.txt
-├── scripts
-│   ├── Readme.md
-│   ├── backup.ts
-│   └── restore.ts
 ├── src
 │   ├── app.ts
 │   ├── config
@@ -55,12 +48,14 @@
 │   │   ├── Permissions.ts
 │   │   ├── ProcurementRequest.ts
 │   │   ├── User.ts
-│   │   └── index.ts
+│   │   ├── index.ts
+│   │   └── models.md
 │   ├── routes
 │   │   ├── ApprovalRoutes.ts
 │   │   ├── AuthRoutes.ts
 │   │   ├── DepartmentRoutes.ts
 │   │   ├── InventoryRoutes.ts
+│   │   ├── InventoryTransactionRoutes.ts
 │   │   ├── PermissionRoutes.ts
 │   │   ├── ProcurementRoutes.ts
 │   │   ├── UserRoutes.ts
@@ -75,6 +70,7 @@
 │   │   ├── AuthService.ts
 │   │   ├── DepartmentService.ts
 │   │   ├── ErrorService.ts
+│   │   ├── InventoryService.ts
 │   │   ├── LoggerService.ts
 │   │   ├── NotificationService.ts
 │   │   ├── PermissionService.ts
@@ -89,7 +85,6 @@
 │   └── utils
 │       ├── helper.ts
 │       └── logger.ts
-├── tests
 ├── tsconfig.json
 ├── wecom-integration
 │   ├── Readme.md
@@ -97,4 +92,4 @@
 │   └── wecomService.ts
 └── yarn.lock
 
-30 directories, 121 files
+20 directories, 73 files
