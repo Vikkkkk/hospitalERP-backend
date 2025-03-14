@@ -4,16 +4,11 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     // 🏢 Departments Table
     await queryInterface.createTable("Departments", {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER,
-      },
+      id: { allowNull: false, autoIncrement: true, primaryKey: true, type: Sequelize.INTEGER },
       name: { type: Sequelize.STRING, allowNull: false },
       createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
-      deletedAt: {allowNull:true, type:Sequelize.DATE,}
+      deletedAt: { allowNull: true, type: Sequelize.DATE },
     });
 
     // 👤 Users Table
@@ -23,13 +18,14 @@ module.exports = {
       role: { type: Sequelize.STRING, allowNull: false },
       departmentId: {
         type: Sequelize.INTEGER,
-        allowNull: true, // ✅ Allows NULL for global roles (RootAdmin, 院长)
+        allowNull: true,
         references: { model: "Departments", key: "id" },
         onDelete: "SET NULL",
       },
       password_hash: { type: Sequelize.STRING, allowNull: false },
       isglobalrole: { type: Sequelize.BOOLEAN, defaultValue: false },
       wecom_userid: { type: Sequelize.STRING, allowNull: true, unique: true },
+      canAccess: { type: Sequelize.JSON, allowNull: false, defaultValue: [] }, // ✅ FIXED DEFAULT VALUE
       deletedAt: { type: Sequelize.DATE, allowNull: true },
       createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
@@ -83,12 +79,14 @@ module.exports = {
         references: { model: "Users", key: "id" },
         onDelete: "SET NULL",
       },
+      deadlineDate:{type: Sequelize.DATE,allowNull:true},
       priorityLevel: { type: Sequelize.STRING, allowNull: false },
       quantity: { type: Sequelize.INTEGER, allowNull: false },
       status: { type: Sequelize.STRING, defaultValue: "Pending" },
       approvalId: { type: Sequelize.STRING, allowNull: true },
       createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
+      deletedAt: { type: Sequelize.DATE, allowNull: true },
     });
 
     // 🔄 Inventory Transactions Table
@@ -121,25 +119,11 @@ module.exports = {
       deletedAt: { type: Sequelize.DATE, allowNull: true },
     });
 
-    // 🔐 Permissions Table
-    await queryInterface.createTable("Permissions", {
-      id: { allowNull: false, autoIncrement: true, primaryKey: true, type: Sequelize.INTEGER },
-      role: { type: Sequelize.STRING, allowNull: false },
-      module: { type: Sequelize.STRING, allowNull: false },
-      canaccess: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
-      departmentId: {
-        type: Sequelize.INTEGER,
-        allowNull: true,
-        references: { model: "Departments", key: "id" },
-        onDelete: "SET NULL",
-      },
-      createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
-      updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
-    });
+    // ❌ Remove `Permissions` Table if Not Needed
+    await queryInterface.dropTable("Permissions");
   },
 
   down: async (queryInterface, Sequelize) => {
-    await queryInterface.dropTable("Permissions");
     await queryInterface.dropTable("InventoryTransaction");
     await queryInterface.dropTable("ProcurementRequests");
     await queryInterface.dropTable("Inventory");

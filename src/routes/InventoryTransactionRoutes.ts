@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { InventoryTransaction } from '../models/InventoryTransaction';
 import { Inventory } from '../models/Inventory';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
-import { authorizeRole } from '../middlewares/RoleCheck';
+import { authorizeAccess } from '../middlewares/AccessMiddleware';
 import { Op } from 'sequelize';
 import { Parser } from 'json2csv';
 
@@ -14,7 +14,7 @@ const router = Router();
 router.get(
   '/',
   authenticateUser,
-  authorizeRole(['RootAdmin', 'WarehouseStaff', '部长']),
+  authorizeAccess(['RootAdmin', 'WarehouseStaff', '部长']),
   async (req: Request, res: Response) => {
     try {
       const { page = 1, limit = 10, type, departmentId, startDate, endDate } = req.query;
@@ -57,7 +57,7 @@ router.get(
 router.get(
   '/monthly-report',
   authenticateUser,
-  authorizeRole(['RootAdmin', 'WarehouseStaff', '部长']),
+  authorizeAccess(['RootAdmin', 'WarehouseStaff', '部长']),
   async (req: Request, res: Response):Promise <any> => {
     try {
       const { month, year } = req.query;
@@ -106,7 +106,7 @@ router.get(
 router.get(
   '/export/csv',
   authenticateUser,
-  authorizeRole(['RootAdmin', 'WarehouseStaff', '部长']),
+  authorizeAccess(['RootAdmin', 'WarehouseStaff', '部长']),
   async (_req: Request, res: Response) => {
     try {
       const transactions = await InventoryTransaction.findAll({

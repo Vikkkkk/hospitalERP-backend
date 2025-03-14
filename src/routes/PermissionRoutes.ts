@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { Permissions } from '../models/Permissions';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
-import { authorizeRole } from '../middlewares/RoleCheck';
+import { authorizeAccess } from '../middlewares/AccessMiddleware';
 
 const router = Router();
 
@@ -9,7 +9,7 @@ const router = Router();
 router.post(
   '/',
   authenticateUser,
-  authorizeRole(['RootAdmin', '院长']),
+  authorizeAccess(['RootAdmin', '院长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { role, module, canaccess, departmentId } = req.body;
@@ -50,7 +50,7 @@ router.post(
 router.get(
   '/',
   authenticateUser,
-  authorizeRole(['RootAdmin', '院长', '副院长']),
+  authorizeAccess(['RootAdmin', '院长', '副院长']),
   async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const permissions = await Permissions.findAll();
@@ -66,7 +66,7 @@ router.get(
 router.patch(
   '/:id',
   authenticateUser,
-  authorizeRole(['RootAdmin', '院长']),
+  authorizeAccess(['RootAdmin', '院长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
@@ -98,7 +98,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticateUser,
-  authorizeRole(['RootAdmin']),
+  authorizeAccess(['RootAdmin']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;

@@ -26,9 +26,10 @@ export class UserController {
       const newUser = await User.create({
         username,
         role,
-        password_hash: hashedPassword,
-        departmentId: departmentId || null,
+        password_hash: await bcrypt.hash(password, 10),
+        departmentId,
         isglobalrole: isglobalrole || false,
+        canAccess: [], 
       });
 
       res.status(201).json({ message: '用户创建成功', user: newUser });

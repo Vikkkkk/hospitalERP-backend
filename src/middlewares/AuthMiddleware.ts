@@ -10,6 +10,7 @@ export interface AuthenticatedRequest extends Request {
     departmentId: number | null;
     isglobalrole: boolean;
     wecom_userid?: string;
+    canAccess: string[];  
   };
 }
 
@@ -61,6 +62,7 @@ export const authenticateUser = async (
       departmentId: user.departmentId,
       isglobalrole: user.isglobalrole,
       wecom_userid: user.wecom_userid ?? undefined, // ✅ Converts `null` to `undefined`
+      canAccess: user.canAccess || [],
     };
 
     console.log(`✅ User authenticated: ${user.username} (Role: ${user.role})`);

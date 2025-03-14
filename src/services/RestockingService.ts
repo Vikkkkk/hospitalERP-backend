@@ -38,9 +38,9 @@ export const checkAndTriggerRestocking = async (): Promise<void> => {
           title: `Restock: ${item.itemname}`,
           description: `Automatically triggered restocking for ${item.itemname}.`,
           departmentId: item.departmentId || null,
-          requestedby: 1, // System user ID placeholder
-          prioritylevel: 'High',
-          deadlinedate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3-day deadline
+          requestedBy: 1, // System user ID placeholder
+          priorityLevel: 'High',
+          deadlineDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3-day deadline
           quantity: item.minimumStockLevel - item.quantity, // Request enough to reach minimum
           status: 'Pending',
         });

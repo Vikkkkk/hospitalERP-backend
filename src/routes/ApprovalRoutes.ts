@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { ProcurementRequest } from '../models/ProcurementRequest';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
-import { authorizeRole } from '../middlewares/RoleCheck';
+import { authorizeAccess } from '../middlewares/AccessMiddleware';
 import { sendWeComApprovalRequest, handleWeComApprovalCallback } from '../services/WeComService';
-import { ApprovalService } from '../services/ApprovalService';
+
 
 const router = Router();
 
@@ -13,7 +13,7 @@ const router = Router();
 router.post(
   '/request',
   authenticateUser,
-  authorizeRole(['职员', '副部长', '部长']),
+  authorizeAccess(['职员', '副部长', '部长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { requestId } = req.body;

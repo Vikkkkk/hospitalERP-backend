@@ -27,12 +27,13 @@ const generateToken = (user: User): string => {
     role: user.role,
     departmentId: user.departmentId,
     isglobalrole: user.isglobalrole,
-    wecom_userid: user.wecom_userid || null, // ✅ Explicitly set null if undefined
+    wecom_userid: user.wecom_userid || null,
+    canAccess: user.canAccess || [], // ✅ Ensure `canAccess` is included
   };
 
-  const options: SignOptions = { expiresIn: JWT_EXPIRY }; // ✅ Ensure correct type
+  const options: SignOptions = { expiresIn: JWT_EXPIRY };
 
-  return jwt.sign(payload, JWT_SECRET as string, options); // ✅ TypeScript safe
+  return jwt.sign(payload, JWT_SECRET as string, options);
 };
 
 /**
@@ -79,7 +80,8 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
         role: user.role,
         departmentId: user.departmentId,
         isglobalrole: user.isglobalrole,
-        wecom_userid: user.wecom_userid || null, // ✅ Ensure it's returned properly
+        wecom_userid: user.wecom_userid || null, // ✅ Ensure it's returned properly,
+        canAccess:user.canAccess || [],
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },

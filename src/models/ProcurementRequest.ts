@@ -8,9 +8,9 @@ interface ProcurementRequestAttributes {
   title: string;
   description?: string;
   departmentId: number | null;
-  requestedby: number;
-  prioritylevel: 'Low' | 'Medium' | 'High';
-  deadlinedate: Date;
+  requestedBy: number;
+  priorityLevel: 'Low' | 'Medium' | 'High';
+  deadlineDate: Date;
   quantity: number;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
   approvalId?: string | null;
@@ -28,9 +28,9 @@ export class ProcurementRequest
   public title!: string;
   public description?: string;
   public departmentId!: number | null;
-  public requestedby!: number;
-  public prioritylevel!: 'Low' | 'Medium' | 'High';
-  public deadlinedate!: Date;
+  public requestedBy!: number;
+  public priorityLevel!: 'Low' | 'Medium' | 'High';
+  public deadlineDate!: Date;
   public quantity!: number;
   public status!: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
   public approvalId?: string | null;
@@ -64,7 +64,7 @@ ProcurementRequest.init(
       },
       onDelete: 'SET NULL', // ✅ Prevent errors if department is deleted
     },
-    requestedby: {
+    requestedBy: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
@@ -73,12 +73,12 @@ ProcurementRequest.init(
       },
       onDelete: 'CASCADE', // ✅ Ensures cleanup if user is deleted
     },
-    prioritylevel: {
+    priorityLevel: {
       type: DataTypes.ENUM('Low', 'Medium', 'High'), // ✅ Enforce enum validation
       allowNull: false,
       defaultValue: 'Medium', // ✅ Set sensible default
     },
-    deadlinedate: {
+    deadlineDate: {
       type: DataTypes.DATE,
       allowNull: false,
     },

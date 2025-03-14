@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { ProcurementRequest } from '../models/ProcurementRequest';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
-import { authorizeRole } from '../middlewares/RoleCheck';
+import { authorizeAccess } from '../middlewares/AccessMiddleware';
 import { notifyApprovalRequired } from '../services/NotificationService';
 
 const router = Router();
@@ -11,8 +11,8 @@ interface ProcurementRequestBody {
   title: string;
   description?: string;
   departmentId: number;
-  prioritylevel: 'Low' | 'Medium' | 'High';
-  deadlinedate: Date;
+  priorityLevel: 'Low' | 'Medium' | 'High';
+  deadlineDate: Date;
   quantity: number;
 }
 
@@ -20,15 +20,15 @@ interface ProcurementRequestBody {
 router.post(
   '/',
   authenticateUser,
-  authorizeRole(['职员', '副部长', '部长']),
+  authorizeAccess(['职员', '副部长', '部长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const {
         title,
         description,
         departmentId,
-        prioritylevel,
-        deadlinedate,
+        priorityLevel,
+        deadlineDate,
         quantity,
       }: ProcurementRequestBody = req.body;
 
@@ -37,10 +37,10 @@ router.post(
         title,
         description,
         departmentId,
-        prioritylevel,
-        deadlinedate,
+        priorityLevel,
+        deadlineDate,
         quantity,
-        requestedby: req.user!.id,
+        requestedBy: req.user!.id,
         status: 'Pending',
       });
 
@@ -62,7 +62,7 @@ router.post(
 router.get(
   '/',
   authenticateUser,
-  authorizeRole(['RootAdmin', '院长', '副院长', '部长']),
+  authorizeAccess(['RootAdmin', '院长', '副院长', '部长']),
   async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const requests = await ProcurementRequest.findAll();
@@ -78,7 +78,7 @@ router.get(
 router.patch(
   '/:id/status',
   authenticateUser,
-  authorizeRole(['RootAdmin', '院长', '副院长']),
+  authorizeAccess(['RootAdmin', '院长', '副院长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;

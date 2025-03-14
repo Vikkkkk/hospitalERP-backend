@@ -65,7 +65,7 @@ export const sendWeComApprovalRequest = async (request: any): Promise<string> =>
     const payload = {
       agentid: agentId,
       approval_id: `APPROVAL-${request.id}`,
-      content: `审批请求: ${request.title}\n描述: ${request.description}\n优先级: ${request.prioritylevel || '普通'}\n数量: ${request.quantity || 'N/A'}`,
+      content: `审批请求: ${request.title}\n描述: ${request.description}\n优先级: ${request.priorityLevel || '普通'}\n数量: ${request.quantity || 'N/A'}`,
       approvers,
     };
 

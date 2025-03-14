@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Inventory } from '../models/Inventory';
 import { InventoryTransaction } from '../models/InventoryTransaction';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
-import { authorizeRole } from '../middlewares/RoleCheck';
+import { authorizeAccess } from '../middlewares/AccessMiddleware';
 import { Op } from 'sequelize';
 
 interface InventoryTransferRequest {
@@ -25,7 +25,7 @@ const router = Router();
 router.get(
   '/',
   authenticateUser,
-  authorizeRole(['RootAdmin', '院长', '副院长', '部长', '职员']),
+  authorizeAccess(['RootAdmin', '院长', '副院长', '部长', '职员']),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const page = parseInt(req.query.page as string) || 1;
@@ -56,7 +56,7 @@ router.get(
 router.post(
   '/add',
   authenticateUser,
-  authorizeRole(['RootAdmin', 'WarehouseStaff']),
+  authorizeAccess(['RootAdmin', 'WarehouseStaff']),
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { itemname, category, unit, quantity, minimumStockLevel, restockThreshold, departmentId, supplier } = req.body;
@@ -90,7 +90,7 @@ router.post(
 router.post(
   '/transfer',
   authenticateUser,
-  authorizeRole(['RootAdmin', 'WarehouseStaff']),
+  authorizeAccess(['RootAdmin', 'WarehouseStaff']),
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       console.log("📦 Transfer request body: ", req.body);
@@ -155,7 +155,7 @@ router.post(
 router.patch(
   '/update',
   authenticateUser,
-  authorizeRole(['职员', '副部长', '部长']),
+  authorizeAccess(['职员', '副部长', '部长']),
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { itemName, usedQuantity, departmentId }: InventoryUsageUpdateRequest = req.body;
@@ -200,7 +200,7 @@ router.patch(
 router.post(
   '/restock/:id',
   authenticateUser,
-  authorizeRole(['RootAdmin', 'WarehouseStaff']),
+  authorizeAccess(['RootAdmin', 'WarehouseStaff']),
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { id } = req.params;

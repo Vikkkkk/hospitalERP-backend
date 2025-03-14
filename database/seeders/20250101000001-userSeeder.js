@@ -1,9 +1,16 @@
 const bcrypt = require('bcrypt');
 
+const MODULES = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'inventory', label: 'Inventory' },
+  { key: 'procurement', label: 'Procurement' },
+  { key: 'departments', label: 'Department Management' },
+  { key: 'user-management', label: 'User Management' },
+];
+
 module.exports = {
   up: async (queryInterface) => {
     const hashedRootPassword = await bcrypt.hash('root123', 10);
-    const hashedAdminPassword = await bcrypt.hash('yz123', 10);
 
     await queryInterface.bulkInsert('Users', [
       {
@@ -16,22 +23,12 @@ module.exports = {
         deletedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-      },
-      {
-        username: '院长',
-        password_hash: hashedAdminPassword,
-        role: 'Admin',
-        departmentId: null,
-        isglobalrole: true,
-        wecom_userid: null,
-        deletedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        canAccess: JSON.stringify(MODULES.map(module => module.key)), // ✅ Convert array to JSON
       }
-    ],{ignoreDuplicates: true});
+    ], { ignoreDuplicates: true });
   },
 
   down: async (queryInterface) => {
-    await queryInterface.bulkDelete('Users', null, {});
+    await queryInterface.bulkDelete('Users', { username: 'rootadmin' }, {});
   },
 };

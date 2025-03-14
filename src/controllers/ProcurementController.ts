@@ -3,7 +3,7 @@ import { Response, Request } from 'express';
 import { ProcurementRequest } from '../models/ProcurementRequest';
 import { notifyApprovalRequired } from '../services/NotificationService';
 import { ApprovalService } from '../services/ApprovalService';
-import { authorizeRole } from '../middlewares/RoleCheck';
+import { authorizeAccess } from '../middlewares/AccessMiddleware';
 
 export class ProcurementController {
   /**
@@ -11,15 +11,15 @@ export class ProcurementController {
    */
   static async submitRequest(req: AuthenticatedRequest, res: Response): Promise<any> {
     try {
-      const { title, description, prioritylevel, deadlinedate, quantity } = req.body;
+      const { title, description, priorityLevel, deadlineDate, quantity } = req.body;
 
       // ✅ Validate required fields
-      if (!title || !prioritylevel || !deadlinedate || !quantity) {
+      if (!title || !priorityLevel || !deadlineDate || !quantity) {
         return res.status(400).json({ message: '所有字段都是必填项' });
       }
 
       // ✅ Ensure valid priority level
-      if (!['Low', 'Medium', 'High'].includes(prioritylevel)) {
+      if (!['Low', 'Medium', 'High'].includes(priorityLevel)) {
         return res.status(400).json({ message: '无效的优先级' });
       }
 
@@ -28,10 +28,10 @@ export class ProcurementController {
         title,
         description,
         departmentId: req.user!.departmentId,
-        prioritylevel,
-        deadlinedate,
+        priorityLevel,
+        deadlineDate,
         quantity,
-        requestedby: req.user!.id,
+        requestedBy: req.user!.id,
         status: 'Pending',
       });
 
@@ -55,7 +55,7 @@ export class ProcurementController {
    * 📋 Get All Procurement Requests (Admin & Director Access Only)
    */
   static async getAllRequests(req: AuthenticatedRequest, res: Response): Promise<void> {
-    authorizeRole(['Admin', 'Director'])(req, res, async () => {
+    authorizeAccess(['Admin', 'Director'])(req, res, async () => {
       try {
         const requests = await ProcurementRequest.findAll();
         res.status(200).json({ requests });
@@ -70,7 +70,7 @@ export class ProcurementController {
    * 🔄 Update Procurement Request Status (Only Admin & Directors)
    */
   static async updateRequestStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
-    authorizeRole(['Admin', 'Director'])(req, res, async () => {
+    authorizeAccess(['Admin', 'Director'])(req, res, async () => {
       try {
         const { id } = req.params;
         const { status } = req.body;

@@ -22,7 +22,7 @@ This document provides an overview of key backend files, their responsibilities,
 ---
 
 ### **3️⃣ `/models/ProcurementRequest.ts`**
-- Defines **Procurement Request** model with fields: `id, title, description, departmentid, requestedby, prioritylevel, deadlinedate, quantity, status, approvalId`.
+- Defines **Procurement Request** model with fields: `id, title, description, departmentid, requestedBy, priorityLevel, deadlineDate, quantity, status, approvalId`.
 - Supports **status management** (`Pending, Approved, Rejected, Completed`).
 
 ---

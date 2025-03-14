@@ -41,7 +41,7 @@ export class ReportService {
         departmentId: request.departmentId,
         quantity: request.quantity,
         status: request.status,
-        deadlineDate: request.deadlinedate,
+        deadlineDate: request.deadlineDate,
       }));
     } catch (error) {
       console.error('❌ Failed to generate procurement report:', error);
