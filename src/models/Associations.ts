@@ -3,6 +3,8 @@ import { User } from './User';
 import { Department } from './Department';
 import { Inventory } from './Inventory';
 import { InventoryTransaction } from './InventoryTransaction';
+import { ProcurementRequest } from './ProcurementRequest';
+import { DepartmentPermissions } from './DepartmentPermissions';
 
 // ✅ Users belong to Departments (Renamed alias)
 User.belongsTo(Department, { foreignKey: 'departmentId', as: 'userDepartment' });
@@ -18,3 +20,11 @@ Inventory.hasMany(InventoryTransaction, { foreignKey: 'inventoryid', as: 'transa
 
 InventoryTransaction.belongsTo(User, { foreignKey: 'performedby', as: 'performedBy' });
 User.hasMany(InventoryTransaction, { foreignKey: 'performedby', as: 'transactions' });
+
+// ✅ Procurement Requests
+ProcurementRequest.belongsTo(User, { foreignKey: 'requestedBy', as: 'requester' });
+ProcurementRequest.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
+
+// ✅ Department Permissions
+DepartmentPermissions.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
+Department.hasMany(DepartmentPermissions, { foreignKey: 'departmentId', as: 'permissions' });

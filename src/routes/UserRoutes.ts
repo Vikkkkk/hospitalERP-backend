@@ -8,6 +8,7 @@ import { getWeComUser } from '../services/WeComService';
 import { Department } from '../models/Department';
 import { InventoryTransaction } from '../models/InventoryTransaction';
 import { ProcurementRequest } from '../models/ProcurementRequest';
+import { DepartmentPermissions } from '../models/DepartmentPermissions';
 
 const router = Router();
 
@@ -85,7 +86,7 @@ router.post(
   authorizeAccess(['RootAdmin', 'Admin', 'DepartmentHead']),
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
-      const { username, role, password, departmentId } = req.body;
+      const { username, role, password, departmentId, canAccess } = req.body;
 
       if (!username || !role || !password) {
         return res.status(400).json({ message: '请填写所有必填字段' });
@@ -97,12 +98,27 @@ router.post(
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
+
+      // ✅ Default permissions
+      let userPermissions = canAccess ?? [];
+
+      // ✅ Fetch department-based permissions if departmentId is provided
+      if (departmentId) {
+        const deptPermissions = await DepartmentPermissions.findAll({
+          where: { departmentId },
+        });
+
+        const departmentAccess = deptPermissions.map(p => p.module);
+        userPermissions = [...new Set([...userPermissions, ...departmentAccess])]; // ✅ Avoid duplicates
+      }
+
       const newUser = await User.create({
         username,
         role,
         departmentId: departmentId || req.user!.departmentId,
         password_hash: hashedPassword,
         isglobalrole: false,
+        canAccess: userPermissions, // ✅ Save permissions in DB
       });
 
       res.status(201).json({ message: '用户创建成功', user: newUser });
@@ -129,10 +145,23 @@ router.patch(
         return res.status(404).json({ message: '未找到用户' });
       }
 
+      // ✅ Automatically assign permissions based on role & department
+      const updatedPermissions = canAccess ?? [];
+
+      // ✅ Check Department Permissions
+      if (departmentId) {
+        const deptPermission = await DepartmentPermissions.findAll({
+          where: { departmentId },
+        });
+
+        const departmentAccess = deptPermission.map(p => p.module);
+        updatedPermissions.push(...departmentAccess);
+      }
+
       await user.update({
         role,
         departmentId: departmentId ?? user.departmentId,
-        canAccess: canAccess ?? [],
+        canAccess: updatedPermissions,
       });
 
       // ✅ Fetch updated user with department details (No raw: true)
@@ -148,8 +177,8 @@ router.patch(
       res.status(200).json({
         message: '用户信息已更新',
         user: {
-          ...updatedUser.toJSON(), // ✅ Convert Sequelize instance to plain object
-          departmentName: updatedUser.userDepartment ? updatedUser.userDepartment.name : '无', // ✅ Correctly access department name
+          ...updatedUser.toJSON(),
+          departmentName: updatedUser.userDepartment ? updatedUser.userDepartment.name : '无',
         },
       });
     } catch (error) {
@@ -209,16 +238,8 @@ router.delete(
         return res.status(403).json({ message: '无法删除 RootAdmin 用户' });
       }
 
-      const hasTransactions = await InventoryTransaction.findOne({ where: { performedby: id } });
-      const hasProcurementRequests = await ProcurementRequest.findOne({ where: { requestedBy: id } });
-
-      if (!hasTransactions && !hasProcurementRequests) {
-        await user.destroy({ force: true });
-        return res.status(200).json({ message: '用户已永久删除' });
-      }
-
       await user.destroy();
-      res.status(200).json({ message: '用户已软删除 (可恢复)' });
+      res.status(200).json({ message: '用户已删除' });
 
     } catch (error) {
       handleError(res, error, '无法删除用户');
@@ -237,13 +258,8 @@ router.patch(
     try {
       const { id } = req.params;
 
-      const user = await User.findByPk(id, { paranoid: false });
-      if (!user) {
-        return res.status(404).json({ message: '用户不存在' });
-      }
-
-      await user.restore();
-      res.status(200).json({ message: '用户已恢复', user });
+      await User.restore({ where: { id } });
+      res.status(200).json({ message: '用户已恢复' });
 
     } catch (error) {
       handleError(res, error, '无法恢复用户');

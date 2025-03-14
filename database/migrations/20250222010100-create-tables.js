@@ -79,7 +79,7 @@ module.exports = {
         references: { model: "Users", key: "id" },
         onDelete: "SET NULL",
       },
-      deadlineDate:{type: Sequelize.DATE,allowNull:true},
+      deadlineDate: { type: Sequelize.DATE, allowNull: true },
       priorityLevel: { type: Sequelize.STRING, allowNull: false },
       quantity: { type: Sequelize.INTEGER, allowNull: false },
       status: { type: Sequelize.STRING, defaultValue: "Pending" },
@@ -119,11 +119,25 @@ module.exports = {
       deletedAt: { type: Sequelize.DATE, allowNull: true },
     });
 
-    // ❌ Remove `Permissions` Table if Not Needed
-    await queryInterface.dropTable("Permissions");
+    // 🛡️ Department Permissions Table
+    await queryInterface.createTable("DepartmentPermissions", {
+      id: { allowNull: false, autoIncrement: true, primaryKey: true, type: Sequelize.INTEGER },
+      departmentId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: { model: "Departments", key: "id" },
+        onDelete: "CASCADE",
+      },
+      module: { type: Sequelize.STRING, allowNull: false }, // Ex: "inventory", "procurement"
+      canAccess: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
+      createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
+      updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
+      deletedAt: { type: Sequelize.DATE, allowNull: true },
+    });
   },
 
   down: async (queryInterface, Sequelize) => {
+    await queryInterface.dropTable("DepartmentPermissions");
     await queryInterface.dropTable("InventoryTransaction");
     await queryInterface.dropTable("ProcurementRequests");
     await queryInterface.dropTable("Inventory");

@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from './AuthMiddleware';
-import { Permissions } from '../models/Permissions';
+import { DepartmentPermissions } from '../models/DepartmentPermissions';
 
-// 🏗 **Role Hierarchy** (For inherited permissions)
+// 🏗 **Role Hierarchy** (Defines inherited permissions)
 const roleHierarchy: Record<string, string[]> = {
   RootAdmin: ["Admin", "DeptHead", "Staff"],
   Admin: ["DeptHead", "Staff"],
@@ -11,15 +11,15 @@ const roleHierarchy: Record<string, string[]> = {
 };
 
 /**
- * ✅ Middleware to check access based on **role hierarchy** & **canAccess (module-based)**
+ * ✅ Middleware to check access based on **role hierarchy**, **department rules**, and **explicit permissions**
  */
 export const authorizeAccess = (allowedModules: string[]) => {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction):Promise<any> => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<any> => {
     if (!req.user) {
       return res.status(403).json({ message: '未经授权的访问 (Unauthorized Access)' });
     }
 
-    const { role, departmentId, isglobalrole, username, canAccess=[] } = req.user;
+    const { role, departmentId, isglobalrole, username, canAccess = [] } = req.user;
     console.log(`🔍 Access Check: User ${username} (Role: ${role}, Dept: ${departmentId}) trying to access: ${allowedModules}`);
 
     // ✅ **RootAdmin Always Has Full Access**
@@ -37,24 +37,24 @@ export const authorizeAccess = (allowedModules: string[]) => {
       return next();
     }
 
-    // ✅ **Check `canAccess` Field** (Module-Based)
+    // ✅ **Check User's `canAccess` Field** (Explicit Module Access)
     if (canAccess.some((module) => allowedModules.includes(module))) {
       console.log(`✅ Access Granted: User has explicit module access`);
       return next();
     }
 
-    // 🔍 **Check in `Permissions` Table for Department-Based Access**
-    const permission = await Permissions.findOne({
-      where: {
-        role,
-        departmentId: departmentId || null, // Allow null for global roles
-        canaccess: true,
-      },
-    });
+    // 🔍 **Check Department-Based Permissions**
+    if (departmentId) {
+      const deptPermissions = await DepartmentPermissions.findAll({
+        where: {
+          departmentId: departmentId,
+        },
+      });
 
-    if (permission) {
-      console.log(`✅ Access Granted: User has explicit permission from database`);
-      return next();
+      if (deptPermissions.some((perm) => allowedModules.includes(perm.module))) {
+        console.log(`✅ Access Granted: Department ${departmentId} has permission for ${allowedModules}`);
+        return next();
+      }
     }
 
     // 🚨 **Access Denied**
