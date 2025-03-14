@@ -238,8 +238,19 @@ router.delete(
         return res.status(403).json({ message: '无法删除 RootAdmin 用户' });
       }
 
-      await user.destroy();
-      res.status(200).json({ message: '用户已删除' });
+      // 🔍 Check if the user has interactions in InventoryTransaction or ProcurementRequest
+      const hasTransactions = await InventoryTransaction.findOne({ where: { performedby: id } });
+      const hasProcurementRequests = await ProcurementRequest.findOne({ where: { requestedBy: id } });
+
+      if (!hasTransactions && !hasProcurementRequests) {
+        console.log(`✅ User ${id} has no interactions, performing HARD delete.`);
+        await user.destroy({ force: true }); // 🔹 Hard delete
+        return res.status(200).json({ message: '用户已永久删除' });
+      }
+
+      console.log(`⚠️ User ${id} has interactions, performing SOFT delete.`);
+      await user.destroy(); // 🔹 Soft delete (default behavior)
+      res.status(200).json({ message: '用户已软删除 (可恢复)' });
 
     } catch (error) {
       handleError(res, error, '无法删除用户');

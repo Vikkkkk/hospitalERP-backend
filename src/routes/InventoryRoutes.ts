@@ -20,19 +20,27 @@ interface InventoryUsageUpdateRequest {
 const router = Router();
 
 /**
- * 📦 Get all inventory items with pagination
+ * 📦 Get all inventory items with department filtering
  */
 router.get(
   '/',
   authenticateUser,
-  authorizeAccess(['RootAdmin', '院长', '副院长', '部长', '职员']),
-  async (req: Request, res: Response): Promise<void> => {
+  authorizeAccess(['RootAdmin', 'WarehouseStaff', '院长', '副院长', '部长', '职员']),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const offset = (page - 1) * limit;
 
+      let whereCondition: any = {};
+
+      // ✅ RootAdmin & WarehouseStaff see all inventory, others see only their department
+      if (!req.user!.isglobalrole && req.user!.role !== 'WarehouseStaff') {
+        whereCondition.departmentId = req.user!.departmentId;
+      }
+
       const { rows: inventoryItems, count } = await Inventory.findAndCountAll({
+        where: whereCondition,
         limit,
         offset,
       });
@@ -190,42 +198,6 @@ router.patch(
     } catch (error) {
       console.error('❌ 更新库存使用失败:', error);
       res.status(500).json({ message: '库存使用情况更新失败' });
-    }
-  }
-);
-
-/**
- * 🔄 Request Restocking
- */
-router.post(
-  '/restock/:id',
-  authenticateUser,
-  authorizeAccess(['RootAdmin', 'WarehouseStaff']),
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
-    try {
-      const { id } = req.params;
-      const item = await Inventory.findByPk(id);
-
-      if (!item) return res.status(404).json({ message: '库存物品未找到' });
-      if (item.quantity >= item.minimumStockLevel) return res.status(400).json({ message: '库存充足，无需补货' });
-
-      const restockQuantity = item.minimumStockLevel - item.quantity;
-
-      // ✅ Log transaction with item name & category
-      await InventoryTransaction.create({
-        inventoryid: item.id,
-        departmentId: null,
-        transactiontype: 'Restocking',
-        quantity: restockQuantity,
-        performedby: req.user!.id,
-        itemname: item.itemname,
-        category: item.category,
-      });
-
-      res.status(200).json({ message: '补货请求已提交', item, restockQuantity });
-    } catch (error) {
-      console.error('❌ 补货请求失败:', error);
-      res.status(500).json({ message: '补货请求失败' });
     }
   }
 );
