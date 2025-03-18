@@ -10,8 +10,9 @@ dotenv.config();
 const corpId = process.env.WECOM_CORP_ID;
 const corpSecret = process.env.WECOM_CORP_SECRET;
 const agentId = process.env.WECOM_AGENT_ID;
+const wecomWebhookURL = process.env.WECOM_WEBHOOK_URL; // ✅ Webhook for group messages
 
-if (!corpId || !corpSecret || !agentId) {
+if (!corpId || !corpSecret || !agentId || !wecomWebhookURL) {
   throw new Error('🚨 Missing WeCom environment variables!');
 }
 
@@ -21,7 +22,7 @@ let tokenExpiry: number = 0; // ✅ Track expiry time
 /**
  * 🔑 Fetch and cache the WeCom access token
  */
-const fetchAccessToken = async (): Promise<string> => {
+export const fetchAccessToken = async (): Promise<string> => {
   const currentTime = Math.floor(Date.now() / 1000);
 
   if (accessToken && tokenExpiry > currentTime) {
@@ -29,7 +30,6 @@ const fetchAccessToken = async (): Promise<string> => {
   }
 
   try {
-    console.log('🔄 Fetching new WeCom Access Token...');
     const response = await axios.get(
       `https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${corpId}&corpsecret=${corpSecret}`
     );
@@ -46,6 +46,88 @@ const fetchAccessToken = async (): Promise<string> => {
   } catch (error) {
     LoggerService.error(`❌ Failed to fetch WeCom Access Token: ${(error as Error).message}`);
     throw new Error('无法获取 AccessToken');
+  }
+};
+
+/**
+ * 📩 Send a direct message to a user on WeCom
+ */
+export const sendWeComMessage = async (wecomUserId: string, message: string): Promise<boolean> => {
+  try {
+    const token = await fetchAccessToken();
+
+    const payload = {
+      touser: wecomUserId,
+      msgtype: "text",
+      agentid: agentId,
+      text: { content: message },
+      safe: 0,
+    };
+
+    const response = await axios.post(
+      `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${token}`,
+      payload
+    );
+
+    if (response.data.errcode !== 0) {
+      throw new Error(`WeCom message send failed: ${response.data.errmsg}`);
+    }
+
+    LoggerService.info(`✅ WeCom Message Sent to ${wecomUserId}: ${message}`);
+    return true;
+  } catch (error) {
+    LoggerService.error(`❌ Failed to send WeCom message: ${(error as Error).message}`);
+    return false;
+  }
+};
+
+/**
+ * 📢 Send a notification to a WeCom Group using Webhook
+ */
+export const sendWeComGroupNotification = async (message: string): Promise<boolean> => {
+  try {
+    const payload = {
+      msgtype: "text",
+      text: { content: message },
+    };
+
+    const response = await axios.post(wecomWebhookURL, payload);
+
+    if (response.data.errcode !== 0) {
+      throw new Error(`Group notification failed: ${response.data.errmsg}`);
+    }
+
+    LoggerService.info(`✅ WeCom Group Notification Sent: ${message}`);
+    return true;
+  } catch (error) {
+    LoggerService.error(`❌ Failed to send WeCom group notification: ${(error as Error).message}`);
+    return false;
+  }
+};
+
+/**
+ * ✅ Retrieve WeCom User Information for Login
+ */
+export const getWeComUser = async (code: string): Promise<any> => {
+  try {
+    const token = await fetchAccessToken();
+
+    if (!code) {
+      throw new Error('❌ WeCom OAuth Code is missing!');
+    }
+
+    const response = await axios.get(
+      `https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token=${token}&code=${code}`
+    );
+
+    if (response.data.errcode !== 0) {
+      throw new Error(`获取用户信息失败: ${response.data.errmsg}`);
+    }
+
+    return response.data;
+  } catch (error) {
+    LoggerService.error(`❌ Failed to retrieve WeCom user info: ${(error as Error).message}`);
+    throw new Error('无法获取用户信息');
   }
 };
 
@@ -69,17 +151,10 @@ export const sendWeComApprovalRequest = async (request: any): Promise<string> =>
       approvers,
     };
 
-    console.log("📤 Sending approval request to WeCom:", JSON.stringify(payload, null, 2));
-
     const response = await axios.post(
       "https://qyapi.weixin.qq.com/cgi-bin/oa/applyevent",
       payload,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     if (response.data.errcode !== 0) {
@@ -91,35 +166,6 @@ export const sendWeComApprovalRequest = async (request: any): Promise<string> =>
   } catch (error) {
     LoggerService.error(`❌ Failed to send WeCom approval request: ${(error as Error).message}`);
     throw new Error('无法发送审批请求');
-  }
-};
-
-/**
- * 🧑‍💻 Retrieve WeCom User Information for Login
- */
-export const getWeComUser = async (code: string): Promise<any> => {
-  try {
-    const token = await fetchAccessToken();
-    console.log(`🟡 WeCom OAuth Code Received: ${code}`);
-    console.log(`🟢 Using Access Token: ${token}`);
-
-    if (!code) {
-      throw new Error('❌ WeCom OAuth Code is missing!');
-    }
-
-    const response = await axios.get(
-      `https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token=${token}&code=${code}`
-    );
-
-    if (response.data.errcode !== 0) {
-      throw new Error(`获取用户信息失败: ${response.data.errmsg}`);
-    }
-
-    console.log(`📡 WeCom API Response:`, JSON.stringify(response.data, null, 2));
-    return response.data;
-  } catch (error) {
-    LoggerService.error(`❌ Failed to retrieve WeCom user info: ${(error as Error).message}`);
-    throw new Error('无法获取用户信息');
   }
 };
 
@@ -144,11 +190,10 @@ export const handleWeComApprovalCallback = async (
       return false;
     }
 
-    // ✅ Improved status mapping
     const statusMapping: Record<string, 'Pending' | 'Approved' | 'Rejected' | 'Completed'> = {
       approved: 'Approved',
       rejected: 'Rejected',
-      returned: 'Pending', // Assuming "returned" means resubmitted
+      returned: 'Pending',
       completed: 'Completed',
     };
 
@@ -163,3 +208,64 @@ export const handleWeComApprovalCallback = async (
     return false;
   }
 };
+
+/**
+ * ✅ Export updated functions
+ */
+
+/**
+ * 🏷️ Notify 部长 that approval is required
+ */
+export const notifyApprovalRequired = async (requestId: number, role: string) => {
+  const message = `🔔 采购审批请求\n请求 ID: ${requestId}\n审批人角色: ${role}\n请前往系统进行审批。`;
+  await sendWeComGroupNotification(message);
+};
+
+/**
+ * ✅ Notify 采购部 that a purchase request was approved
+ */
+export const notifyPurchaseApproval = async (requestId: number, title: string) => {
+  const message = `✅ 采购请求已批准\n请求 ID: ${requestId}\n标题: ${title}\n请执行采购操作。`;
+  await sendWeComGroupNotification(message);
+};
+
+/**
+ * ❌ Notify requestor that a purchase request was rejected
+ */
+export const notifyPurchaseRejection = async (requestId: number, title: string) => {
+  const message = `❌ 采购请求被拒绝\n请求 ID: ${requestId}\n标题: ${title}\n请联系相关人员。`;
+  await sendWeComGroupNotification(message);
+};
+
+/**
+ * 📦 Notify 后勤部职员 of a stock request
+ */
+export const notifyStockRequest = async (itemName: string, quantity: number, requester: string) => {
+  const message = `📦 物资申请通知\n物品: ${itemName}\n数量: ${quantity}\n申请人: ${requester}`;
+  await sendWeComGroupNotification(message);
+};
+
+/**
+ * ✅ Notify a user that their stock request has been approved
+ */
+export const notifyStockApproval = async (wecomUserId: string, itemName: string, quantity: number) => {
+  const message = `✅ 物资申请已批准\n物品: ${itemName}\n数量: ${quantity}\n请前往仓库领取。`;
+  await sendWeComMessage(wecomUserId, message);
+};
+
+/**
+ * 🚨 Notify 后勤部职员 of a low stock alert
+ */
+export const notifyLowStock = async (itemName: string, currentStock: number) => {
+  const message = `⚠️ 库存低警告\n物品: ${itemName}\n当前库存: ${currentStock}\n请考虑补货。`;
+  await sendWeComGroupNotification(message);
+};
+
+/**
+ * 🛒 Notify 采购部 of a new purchase request
+ */
+export const notifyPurchaseRequest = async (itemName: string, quantity: number, requester: string) => {
+  const message = `🛒 采购申请通知\n物品: ${itemName}\n数量: ${quantity}\n申请人: ${requester}`;
+  await sendWeComGroupNotification(message);
+};
+

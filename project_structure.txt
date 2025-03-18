@@ -14,10 +14,7 @@
 │   │   └── index.js
 │   ├── schema.sql
 │   └── seeders
-│       ├── 20230101000001-userSeeder.js
-│       ├── 20230101000002-departmentSeeder.js
-│       ├── 20230101000003-permissionSeeder.js
-│       └── 20230101000004-InventorySeeder.js
+│       └── 20250101000001-userSeeder.js
 ├── logs
 │   └── application.log
 ├── package.json
@@ -37,15 +34,16 @@
 │   │   ├── ProcurementController.ts
 │   │   └── UserController.ts
 │   ├── middlewares
+│   │   ├── AccessMiddleware.ts
 │   │   ├── AuthMiddleware.ts
-│   │   ├── ErrorHandler.ts
-│   │   └── RoleCheck.ts
+│   │   └── ErrorHandler.ts
 │   ├── models
 │   │   ├── Associations.ts
 │   │   ├── Department.ts
+│   │   ├── DepartmentPermissions.ts
 │   │   ├── Inventory.ts
+│   │   ├── InventoryRequest.ts
 │   │   ├── InventoryTransaction.ts
-│   │   ├── Permissions.ts
 │   │   ├── ProcurementRequest.ts
 │   │   ├── User.ts
 │   │   ├── index.ts
@@ -54,9 +52,9 @@
 │   │   ├── ApprovalRoutes.ts
 │   │   ├── AuthRoutes.ts
 │   │   ├── DepartmentRoutes.ts
+│   │   ├── InventoryRequestRoutes.ts
 │   │   ├── InventoryRoutes.ts
 │   │   ├── InventoryTransactionRoutes.ts
-│   │   ├── PermissionRoutes.ts
 │   │   ├── ProcurementRoutes.ts
 │   │   ├── UserRoutes.ts
 │   │   ├── WeComAuthRoutes.ts
@@ -73,7 +71,6 @@
 │   │   ├── InventoryService.ts
 │   │   ├── LoggerService.ts
 │   │   ├── NotificationService.ts
-│   │   ├── PermissionService.ts
 │   │   ├── ReportService.ts
 │   │   ├── RestockingService.ts
 │   │   ├── UserService.ts
@@ -92,4 +89,4 @@
 │   └── wecomService.ts
 └── yarn.lock
 
-20 directories, 73 files
+20 directories, 70 files

@@ -2,13 +2,14 @@ import express, { Request, Response, Application } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import './models/Associations'; // ✅ Ensure this is loaded after models
-
+import { sequelize } from './config/database';
 import authRoutes from './routes/AuthRoutes';
 import userRoutes from './routes/UserRoutes';
 import departmentRoutes from './routes/DepartmentRoutes';
 import inventoryRoutes from './routes/InventoryRoutes';
 import inventoryTransactionRoutes from './routes/InventoryTransactionRoutes';
 import procurementRoutes from './routes/ProcurementRoutes';
+import inventoryRequestRoutes from './routes/InventoryRequestRoutes';
 import approvalRoutes from './routes/ApprovalRoutes';
 import weComCallbackRoutes from './routes/WeComCallbackRoutes';
 import weComAuthRoutes from './routes/WeComAuthRoutes';
@@ -46,6 +47,9 @@ app.use('/api/procurements', procurementRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/wecom-callback', weComCallbackRoutes);
 app.use('/api/wecom-auth', weComAuthRoutes);
+app.use('/api/inventory-requests', inventoryRequestRoutes);
+
+
 
 // ✅ Root Endpoint
 app.get('/', (_req: Request, res: Response) => {

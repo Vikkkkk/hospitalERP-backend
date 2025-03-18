@@ -13,14 +13,21 @@ export class ReportService {
    */
   static async generateInventoryReport(): Promise<any> {
     try {
-      const inventoryData = await Inventory.findAll();
-      return inventoryData.map((item) => ({
-        itemname: item.itemname,
-        quantity: item.quantity,
-        minimumStockLevel: item.minimumStockLevel,
-        departmentId: item.departmentId,
-        lastRestocked: item.lastRestocked,
-      }));
+      const inventoryData = await Inventory.findAll({
+        include: [{ association: 'batches' }], // Fetch associated batches
+      });
+  
+      return inventoryData.map((item) => {
+        const totalQuantity = item.batches?.reduce((sum, batch) => sum + batch.quantity, 0) || 0;
+  
+        return {
+          itemname: item.itemname,
+          quantity: totalQuantity,
+          minimumStockLevel: item.minimumStockLevel,
+          departmentId: item.departmentId,
+          lastRestocked: item.lastRestocked,
+        };
+      });
     } catch (error) {
       console.error('❌ Failed to generate inventory report:', error);
       throw new Error('无法生成库存报告');

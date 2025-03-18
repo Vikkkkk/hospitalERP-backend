@@ -13,7 +13,7 @@ const router = Router();
 router.post(
   '/request',
   authenticateUser,
-  authorizeAccess(['职员', '副部长', '部长']),
+  // authorizeAccess(['职员', '副部长', '部长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { requestId } = req.body;

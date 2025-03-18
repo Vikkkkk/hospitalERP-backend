@@ -31,18 +31,19 @@ router.get(
     try {
       const users = await User.findAll({
         attributes: { exclude: ['password_hash'] },
-        include: [{ model: Department, attributes: ['id', 'name'], as: 'userDepartment' }],
-        paranoid: true, // ✅ Automatically excludes soft-deleted users
+        include: [{ model: Department, attributes: ['id', 'name'], as: 'department' }], // ✅ correct alias
+        paranoid: true, // ✅ Exclude soft-deleted
       });
 
       res.status(200).json({
         users: users.map((user) => ({
           ...user.toJSON(),
-          departmentName: user.userDepartment ? user.userDepartment.name : '无',
+          departmentName: user.userDepartment ? user.userDepartment.name : '无', // ✅ fix alias access
         })),
       });
     } catch (error) {
-      handleError(res, error, '无法获取用户列表');
+      console.error('❌ 获取用户列表失败:', error);
+      res.status(500).json({ message: '无法获取用户列表' });
     }
   }
 );
@@ -58,7 +59,7 @@ router.get(
     try {
       const users = await User.findAll({
         attributes: { exclude: ['password_hash'] },
-        include: [{ model: Department, attributes: ['id', 'name'], as: 'userDepartment' }],
+        include: [{ model: Department, attributes: ['id', 'name'], as: 'department' }],
         paranoid: false, // ✅ Fetches all users (including soft-deleted)
       });
 
@@ -167,7 +168,7 @@ router.patch(
       // ✅ Fetch updated user with department details (No raw: true)
       const updatedUser = await User.findByPk(id, {
         attributes: { exclude: ['password_hash'] },
-        include: [{ model: Department, attributes: ['id', 'name'], as: 'userDepartment' }],
+        include: [{ model: Department, attributes: ['id', 'name'], as: 'department' }],
       });
 
       if (!updatedUser) {

@@ -2,7 +2,8 @@ import { Router, Response } from 'express';
 import { ProcurementRequest } from '../models/ProcurementRequest';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
 import { authorizeAccess } from '../middlewares/AccessMiddleware';
-import { notifyApprovalRequired } from '../services/NotificationService';
+import { notifyApprovalRequired, notifyPurchaseApproval, notifyPurchaseRejection } from '../services/WeComService';
+import { InventoryRequest } from '../models/InventoryRequest';
 
 const router = Router();
 
@@ -16,11 +17,11 @@ interface ProcurementRequestBody {
   quantity: number;
 }
 
-// 📝 Submit a new procurement request
+// 📝 Submit a new procurement request (Includes Restocking Requests)
 router.post(
   '/',
   authenticateUser,
-  authorizeAccess(['职员', '副部长', '部长']),
+  // authorizeAccess(['职员', '副部长', '部长']),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const {
@@ -44,7 +45,6 @@ router.post(
         status: 'Pending',
       });
 
-      // Send approval notification (Simulated for now)
       notifyApprovalRequired(newRequest.id, '部长');
 
       res.status(201).json({
@@ -58,11 +58,11 @@ router.post(
   }
 );
 
-// 📄 View all procurement requests (RootAdmin, 院长, 副院长, 部长)
+// 📄 View all procurement requests (Restocking Requests Included)
 router.get(
   '/',
   authenticateUser,
-  authorizeAccess(['RootAdmin', '院长', '副院长', '部长']),
+  // authorizeAccess(['RootAdmin', '院长', '副院长', '部长', '后勤部职员']),
   async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const requests = await ProcurementRequest.findAll();
@@ -74,7 +74,7 @@ router.get(
   }
 );
 
-// ✅ Approve, reject, or return a procurement request
+// ✅ Approve, Reject, or Return a procurement request
 router.patch(
   '/:id/status',
   authenticateUser,
@@ -98,6 +98,13 @@ router.patch(
       request.status = status;
       await request.save();
 
+      // ✅ Notify approval or rejection
+      if (status === 'Approved') {
+        await notifyPurchaseApproval(request.id, request.title);
+      } else if (status === 'Rejected') {
+        await notifyPurchaseRejection(request.id, request.title);
+      }
+
       res.status(200).json({
         message: `请求状态已更新为 ${status}`,
         request,
@@ -110,18 +117,3 @@ router.patch(
 );
 
 export default router;
-
-
-
-// Key Features & Functions:
-// Submit Procurement Request
-
-// Only 职员 (Staff), 副部长 (Deputy Minister), 部长 (Minister) can submit.
-// Sends an approval request to the department head (部长).
-// View All Procurement Requests
-
-// Only RootAdmin, 院长 (Dean), 副院长 (Vice Dean), 部长 (Minister) can view all requests.
-// Approve, Reject, or Return Procurement Requests
-
-// Only RootAdmin, 院长 (Dean), 副院长 (Vice Dean) can change request status.
-// Ensures valid statuses before updating.

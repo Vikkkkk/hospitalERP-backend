@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { Inventory } from '../models/Inventory';
+import { InventoryBatch } from '../models/InventoryBatch';
 import { InventoryTransaction } from '../models/InventoryTransaction';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
-import { authorizeAccess } from '../middlewares/AccessMiddleware';
 import { Op } from 'sequelize';
+
+const router = Router();
 
 interface InventoryTransferRequest {
   itemName: string;
@@ -17,187 +19,306 @@ interface InventoryUsageUpdateRequest {
   departmentId: number;
 }
 
-const router = Router();
+// 📦 Get department inventory
+router.get('/department', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const requestedDeptId = req.query.departmentId ? parseInt(req.query.departmentId as string, 10) : null;
 
-/**
- * 📦 Get all inventory items with department filtering
- */
-router.get(
-  '/',
-  authenticateUser,
-  authorizeAccess(['RootAdmin', 'WarehouseStaff', '院长', '副院长', '部长', '职员']),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const offset = (page - 1) * limit;
-
-      let whereCondition: any = {};
-
-      // ✅ RootAdmin & WarehouseStaff see all inventory, others see only their department
-      if (!req.user!.isglobalrole && req.user!.role !== 'WarehouseStaff') {
-        whereCondition.departmentId = req.user!.departmentId;
+    // 🔐 Permission check for viewing other departments
+    if (requestedDeptId !== null && requestedDeptId !== req.user!.departmentId) {
+      if (!req.user!.isglobalrole && !req.user!.canAccess.includes('dept-inventory')) {
+        res.status(403).json({ message: '❌ 无权限查看其他部门库存' });
+        return;
       }
-
-      const { rows: inventoryItems, count } = await Inventory.findAndCountAll({
-        where: whereCondition,
-        limit,
-        offset,
-      });
-
-      res.status(200).json({
-        totalItems: count,
-        totalPages: Math.ceil(count / limit),
-        currentPage: page,
-        inventory: inventoryItems,
-      });
-    } catch (error) {
-      console.error('❌ 获取库存信息失败:', error);
-      res.status(500).json({ message: '无法获取库存信息' });
     }
+
+    const targetDeptId = requestedDeptId ?? req.user!.departmentId;
+
+    const inventoryItems = await Inventory.findAll({
+      where: { departmentId: targetDeptId },
+      include: [{ model: InventoryBatch, as: 'batches' }],
+    });
+
+    res.status(200).json({ inventory: inventoryItems });
+  } catch (error) {
+    console.error('❌ 获取部门库存失败:', error);
+    res.status(500).json({ message: '无法获取部门库存' });
   }
-);
+});
 
-/**
- * ➕ Add a new inventory item
- */
-router.post(
-  '/add',
-  authenticateUser,
-  authorizeAccess(['RootAdmin', 'WarehouseStaff']),
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
-    try {
-      const { itemname, category, unit, quantity, minimumStockLevel, restockThreshold, departmentId, supplier } = req.body;
+// 📦 Get main inventory
+router.get('/main', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    // if (!req.user!.isglobalrole && !req.user!.canAccess.includes('main-inventory')) {
+    //   res.status(403).json({ message: '无权限访问一级库' });
+    //   return;
+    // }
 
-      if (!itemname || !category || !unit || quantity < 0 || !minimumStockLevel || !restockThreshold) {
-        return res.status(400).json({ message: '请求参数无效' });
+    const inventoryItems = await Inventory.findAll({
+      where: { departmentId: null },
+      include: [{ model: InventoryBatch, as: 'batches' }],
+    });
+
+    res.status(200).json({ inventory: inventoryItems });
+    return;
+  } catch (error) {
+    console.error('❌ 获取一级库库存失败:', error);
+    res.status(500).json({ message: '无法获取一级库库存' });
+    return;
+  }
+});
+
+// ➕ Add new inventory item (Procurement)
+router.post('/add', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const {
+      itemname, category, unit, minimumStockLevel, restockThreshold,
+      departmentId, supplier, batches, totalQuantity,
+    } = req.body;
+
+    if (!itemname || !category || !unit || minimumStockLevel === undefined || restockThreshold === undefined) {
+      res.status(400).json({ message: '❌ 请求参数无效' });
+      return;
+    }
+
+    if ((!Array.isArray(batches) || batches.length === 0) && !totalQuantity) {
+      res.status(400).json({ message: '❌ 请提供总库存或批次信息' });
+      return;
+    }
+
+    if (departmentId === null) {
+      if (!req.user!.isglobalrole && !req.user!.canAccess.includes('main_inventory_management')) {
+        res.status(403).json({ message: '❌ 无权限管理一级库库存' });
+        return;
       }
+    }
 
-      const newItem = await Inventory.create({
-        itemname,
-        category,
-        unit,
-        quantity,
-        minimumStockLevel,
-        restockThreshold,
-        departmentId: departmentId || null,
+    const newItem = await Inventory.create({
+      itemname, category, unit, minimumStockLevel, restockThreshold,
+      departmentId: departmentId || req.user!.departmentId,
+      supplier: supplier || null,
+    });
+
+    let totalQtyLogged = 0;
+
+    if (totalQuantity) {
+      await InventoryBatch.create({
+        itemId: newItem.id,
+        quantity: totalQuantity,
+        expiryDate: null,
         supplier: supplier || null,
       });
-
-      res.status(201).json({ message: '库存物品已创建', item: newItem });
-    } catch (error) {
-      console.error('❌ 创建库存物品失败:', error);
-      res.status(500).json({ message: '创建库存物品失败' });
+      totalQtyLogged = totalQuantity;
+    } else {
+      for (const batch of batches) {
+        await InventoryBatch.create({
+          itemId: newItem.id,
+          quantity: batch.quantity,
+          expiryDate: batch.expiryDate || null,
+          supplier: batch.supplier || supplier || null,
+        });
+        totalQtyLogged += batch.quantity;
+      }
     }
-  }
-);
+   
+    console.log('🔍 Logging Procurement transaction...', newItem.itemname, totalQtyLogged);
+    await InventoryTransaction.create({
+      inventoryid: newItem.id,
+      departmentId: null,
+      transactiontype: 'Procurement',
+      quantity: totalQtyLogged,
+      performedby: req.user!.id,
+      itemname: newItem.itemname,
+      category: newItem.category,
+    });
+    console.log('✅ Transaction logged!');
 
-/**
- * 🔄 Transfer stock from warehouse to department
- */
+    const fullItem = await Inventory.findByPk(newItem.id, {
+      include: [{ model: InventoryBatch, as: 'batches' }],
+    });
+
+    res.status(201).json({ message: '✅ 库存物品已创建', item: fullItem });
+    return;
+  } catch (error) {
+    console.error('❌ 创建库存物品失败:', error);
+    res.status(500).json({ message: '❌ 创建库存物品失败' });
+    return;
+  }
+});
+
+// 🔄 Transfer stock
+router.post('/transfer', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { itemName, quantity, departmentId }: InventoryTransferRequest = req.body;
+
+    if (!itemName || quantity <= 0 || !departmentId) {
+      res.status(400).json({ message: '请求参数无效' });
+      return;
+    }
+
+    const warehouseItem = await Inventory.findOne({
+      where: { itemname: itemName, departmentId: null },
+      include: [{ model: InventoryBatch, as: 'batches' }],
+    });
+
+    if (!warehouseItem?.batches || warehouseItem.batches.length === 0) {
+      res.status(400).json({ message: '仓库中不存在该物品或无库存' });
+      return;
+    }
+
+    let remainingQty = quantity;
+    for (const batch of warehouseItem.batches) {
+      if (remainingQty <= 0) break;
+      const deducted = Math.min(batch.quantity, remainingQty);
+      batch.quantity -= deducted;
+      remainingQty -= deducted;
+      await batch.save();
+    }
+
+    const [departmentItem] = await Inventory.findOrCreate({
+      where: { itemname: itemName, departmentId },
+      defaults: {
+        itemname: itemName,
+        category: warehouseItem.category,
+        unit: warehouseItem.unit,
+        minimumStockLevel: warehouseItem.minimumStockLevel,
+        restockThreshold: warehouseItem.restockThreshold,
+      },
+    });
+
+    await InventoryBatch.create({
+      itemId: departmentItem.id,
+      quantity,
+      expiryDate: null,
+      supplier: warehouseItem.supplier,
+    });
+
+    await InventoryTransaction.create({
+      inventoryid: departmentItem.id,
+      departmentId,
+      transactiontype: 'Transfer',
+      quantity,
+      performedby: req.user!.id,
+      itemname: departmentItem.itemname,
+      category: departmentItem.category,
+    });
+
+    res.status(200).json({ message: '库存成功转移', item: departmentItem });
+    return;
+  } catch (error) {
+    console.error('❌ 库存转移失败:', error);
+    res.status(500).json({ message: '库存转移失败' });
+    return;
+  }
+});
+
+// ✏️ Update inventory usage
+router.patch('/update', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { itemName, usedQuantity, departmentId }: InventoryUsageUpdateRequest = req.body;
+
+    if (!itemName || usedQuantity <= 0 || !departmentId) {
+      res.status(400).json({ message: '请求参数无效' });
+      return;
+    }
+
+    const departmentItem = await Inventory.findOne({
+      where: { itemname: itemName, departmentId },
+      include: [{ model: InventoryBatch, as: 'batches' }],
+    });
+
+    if (!departmentItem?.batches || departmentItem.batches.length === 0) {
+      res.status(400).json({ message: '仓库中不存在该物品或无库存' });
+      return;
+    }
+
+    let remainingQty = usedQuantity;
+    for (const batch of departmentItem.batches) {
+      if (remainingQty <= 0) break;
+      const deducted = Math.min(batch.quantity, remainingQty);
+      batch.quantity -= deducted;
+      remainingQty -= deducted;
+      await batch.save();
+    }
+
+    await InventoryTransaction.create({
+      inventoryid: departmentItem.id,
+      departmentId,
+      transactiontype: 'Usage',
+      quantity: usedQuantity,
+      performedby: req.user!.id,
+      itemname: departmentItem.itemname,
+      category: departmentItem.category,
+    });
+
+    res.status(200).json({ message: '库存使用情况已更新', item: departmentItem });
+    return;
+  } catch (error) {
+    console.error('❌ 更新库存使用失败:', error);
+    res.status(500).json({ message: '库存使用情况更新失败' });
+    return;
+  }
+});
+
+// ♻️ Restock inventory (Restock Transaction)
 router.post(
-  '/transfer',
+  '/restock/:id',
   authenticateUser,
-  authorizeAccess(['RootAdmin', 'WarehouseStaff']),
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      console.log("📦 Transfer request body: ", req.body);
+      const itemId = parseInt(req.params.id, 10);
+      const { batches } = req.body;
 
-      const { itemName, quantity, departmentId }: InventoryTransferRequest = req.body;
-
-      if (!itemName || quantity <= 0 || !departmentId) {
-        return res.status(400).json({ message: '请求参数无效' });
+      if (!itemId || !Array.isArray(batches) || batches.length === 0) {
+        res.status(400).json({ message: '❌ 无效的请求数据' });
+        return;
       }
 
-      // ✅ Retrieve item from warehouse
-      const warehouseItem = await Inventory.findOne({
-        where: { itemname: itemName, departmentId: null },
+      // ✅ Find Main Inventory Item (departmentId = null)
+      const inventoryItem = await Inventory.findOne({
+        where: { id: itemId, departmentId: null },
+        include: [{ model: InventoryBatch, as: 'batches' }],
       });
 
-      if (!warehouseItem) return res.status(400).json({ message: '仓库中不存在该物品' });
-      if (warehouseItem.quantity < quantity) return res.status(400).json({ message: '仓库库存不足' });
+      if (!inventoryItem) {
+        res.status(404).json({ message: '❌ 未找到主库存物品' });
+        return;
+      }
 
-      // ✅ Deduct from warehouse
-      warehouseItem.quantity -= quantity;
-      await warehouseItem.save();
+      let totalQtyLogged = 0;
 
-      // ✅ Find or create the item in the department
-      const [departmentItem, created] = await Inventory.findOrCreate({
-        where: { itemname: itemName, departmentId },
-        defaults: {
-          itemname: itemName,
-          category: warehouseItem.category,
-          unit: warehouseItem.unit,
-          quantity: 0,
-          minimumStockLevel: warehouseItem.minimumStockLevel,
-          restockThreshold: warehouseItem.restockThreshold,
-        },
-      });
+      // ➕ Add new batches
+      for (const batch of batches) {
+        await InventoryBatch.create({
+          itemId: inventoryItem.id,
+          quantity: batch.quantity,
+          expiryDate: batch.expiryDate || null,
+          supplier: batch.supplier || inventoryItem.supplier || null,
+        });
 
-      // ✅ Update quantity
-      departmentItem.quantity += quantity;
-      await departmentItem.save();
+        totalQtyLogged += batch.quantity;
+      }
 
-      // ✅ Log transaction with item name & category
+      // 📜 Log Transaction (Restock)
       await InventoryTransaction.create({
-        inventoryid: departmentItem.id,
-        departmentId,
-        transactiontype: 'Transfer',
-        quantity,
+        inventoryid: inventoryItem.id,
+        departmentId: null,
+        transactiontype: 'Restocking', // Ensure this matches ENUM if used
+        quantity: totalQtyLogged,
         performedby: req.user!.id,
-        itemname: departmentItem.itemname,
-        category: departmentItem.category,
+        itemname: inventoryItem.itemname,
+        category: inventoryItem.category,
       });
 
-      res.status(200).json({ message: '库存成功转移', item: departmentItem });
+      // 🔍 Fetch updated inventory with new batches
+      const updatedItem = await Inventory.findByPk(itemId, {
+        include: [{ model: InventoryBatch, as: 'batches' }],
+      });
+
+      res.status(200).json({ message: '✅ 物资补充成功', item: updatedItem });
     } catch (error) {
-      console.error('❌ 库存转移失败:', error);
-      res.status(500).json({ message: '库存转移失败' });
-    }
-  }
-);
-
-/**
- * ✏️ Update inventory usage
- */
-router.patch(
-  '/update',
-  authenticateUser,
-  authorizeAccess(['职员', '副部长', '部长']),
-  async (req: AuthenticatedRequest, res: Response): Promise<any> => {
-    try {
-      const { itemName, usedQuantity, departmentId }: InventoryUsageUpdateRequest = req.body;
-
-      if (!itemName || usedQuantity <= 0 || !departmentId) {
-        return res.status(400).json({ message: '请求参数无效' });
-      }
-
-      const departmentItem = await Inventory.findOne({
-        where: { itemname: itemName, departmentId },
-      });
-
-      if (!departmentItem || departmentItem.quantity < usedQuantity) {
-        return res.status(400).json({ message: '库存不足，无法更新' });
-      }
-
-      departmentItem.quantity -= usedQuantity;
-      await departmentItem.save();
-
-      // ✅ Log transaction with item name & category
-      await InventoryTransaction.create({
-        inventoryid: departmentItem.id,
-        departmentId,
-        transactiontype: 'Usage',
-        quantity: usedQuantity,
-        performedby: req.user!.id,
-        itemname: departmentItem.itemname,
-        category: departmentItem.category,
-      });
-
-      res.status(200).json({ message: '库存使用情况已更新', item: departmentItem });
-    } catch (error) {
-      console.error('❌ 更新库存使用失败:', error);
-      res.status(500).json({ message: '库存使用情况更新失败' });
+      console.error('❌ 物资补充失败:', error);
+      res.status(500).json({ message: '❌ 补充库存失败' });
     }
   }
 );

@@ -9,10 +9,11 @@ interface DepartmentAttributes {
   headId?: number | null; // ✅ Add headId field
   createdAt?: Date;
   updatedAt?: Date;
+  deletedAt?: Date | null; // ✅ Soft delete tracking
 }
 
 interface DepartmentCreationAttributes
-  extends Optional<DepartmentAttributes, 'id' | 'headId' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<DepartmentAttributes, 'id' | 'headId' | 'createdAt' | 'updatedAt' | 'deletedAt'> {}
 
 export class Department extends Model<DepartmentAttributes, DepartmentCreationAttributes>
   implements DepartmentAttributes {
@@ -21,8 +22,10 @@ export class Department extends Model<DepartmentAttributes, DepartmentCreationAt
   public headId!: number | null; // ✅ Add headId property
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+  public readonly deletedAt!: Date | null;
 }
 
+// 🔹 Initialize Model
 Department.init(
   {
     id: {
@@ -54,13 +57,17 @@ Department.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true, // ✅ Allow soft deletes
+    },
   },
   {
     sequelize,
     modelName: 'Department',
     tableName: 'Departments',
     timestamps: true,
-    paranoid: true,
+    paranoid: true, // ✅ Enable soft delete functionality
   }
 );
 

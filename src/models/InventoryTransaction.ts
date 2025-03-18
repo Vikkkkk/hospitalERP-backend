@@ -5,7 +5,7 @@ import Department from './Department';
 import User from './User';
 
 // ✅ Define ENUM as a constant array (Easier to modify later)
-const TRANSACTION_TYPES = ['Transfer', 'Usage', 'Restocking'] as const;
+const TRANSACTION_TYPES = ['Transfer', 'Usage', 'Restocking', 'Procurement', 'Checkout'] as const;
 
 interface InventoryTransactionAttributes {
   id: number;
@@ -13,16 +13,17 @@ interface InventoryTransactionAttributes {
   category: string;
   inventoryid: number;
   departmentId: number | null;
-  transactiontype: typeof TRANSACTION_TYPES[number]; // ✅ Type-safe ENUM usage
+  transactiontype: typeof TRANSACTION_TYPES[number];
   quantity: number;
   performedby: number | null;
+  checkoutUser: number | null;
   createdAt?: Date;
   updatedAt?: Date;
-  deletedAt?: Date; // ✅ Soft delete field
+  deletedAt?: Date;
 }
 
 interface InventoryTransactionCreationAttributes
-  extends Optional<InventoryTransactionAttributes, 'id' | 'departmentId' | 'performedby' | 'deletedAt'> {}
+  extends Optional<InventoryTransactionAttributes, 'id' | 'departmentId' | 'performedby' | 'checkoutUser' | 'deletedAt'> {}
 
 export class InventoryTransaction
   extends Model<InventoryTransactionAttributes, InventoryTransactionCreationAttributes>
@@ -33,13 +34,14 @@ export class InventoryTransaction
   public category!: string;
   public inventoryid!: number;
   public departmentId!: number | null;
-  public transactiontype!: typeof TRANSACTION_TYPES[number]; // ✅ Ensures transaction type is strictly enforced
+  public transactiontype!: typeof TRANSACTION_TYPES[number];
   public quantity!: number;
   public performedby!: number | null;
+  public checkoutUser!: number | null;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
-  public readonly deletedAt!: Date; // ✅ Enables soft delete
+  public readonly deletedAt!: Date;
 }
 
 InventoryTransaction.init(
@@ -51,7 +53,7 @@ InventoryTransaction.init(
     },
     itemname: {
       type: DataTypes.STRING,
-      allowNull: false, 
+      allowNull: false,
     },
     category: {
       type: DataTypes.STRING,
@@ -64,7 +66,7 @@ InventoryTransaction.init(
         model: Inventory,
         key: 'id',
       },
-      onDelete: 'CASCADE', // ✅ If an inventory item is deleted, remove associated transactions
+      onDelete: 'CASCADE',
     },
     departmentId: {
       type: DataTypes.INTEGER,
@@ -73,10 +75,10 @@ InventoryTransaction.init(
         model: Department,
         key: 'id',
       },
-      onDelete: 'CASCADE', // ✅ Ensure consistency when departments are removed
+      onDelete: 'CASCADE',
     },
     transactiontype: {
-      type: DataTypes.ENUM(...TRANSACTION_TYPES), // ✅ Future-proof ENUM
+      type: DataTypes.ENUM(...TRANSACTION_TYPES),
       allowNull: false,
     },
     quantity: {
@@ -90,7 +92,16 @@ InventoryTransaction.init(
         model: User,
         key: 'id',
       },
-      onDelete: 'SET NULL', // ✅ Keeps historical records even if user is deleted
+      onDelete: 'SET NULL',
+    },
+    checkoutUser: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: User,
+        key: 'id',
+      },
+      onDelete: 'SET NULL',
     },
     deletedAt: {
       type: DataTypes.DATE,
@@ -101,30 +112,15 @@ InventoryTransaction.init(
     sequelize,
     modelName: 'InventoryTransaction',
     tableName: 'InventoryTransaction',
-    timestamps: true, // ✅ Auto-manage `createdAt` & `updatedAt`
-    paranoid: true, // ✅ Enables soft deletion (records are "deleted" by setting `deletedAt`)
+    timestamps: true,
+    paranoid: true,
     indexes: [
-      { fields: ['inventoryid'] }, // ✅ Faster lookup for inventory history
+      { fields: ['inventoryid'] },
       { fields: ['transactiontype'] },
       { fields: ['performedby'] },
+      { fields: ['checkoutUser'] },
     ],
   }
 );
-
-// ✅ Define Associations (with unique aliases)
-InventoryTransaction.belongsTo(Inventory, {
-  foreignKey: 'inventoryid',
-  as: 'transactionInventory', // 🔥 Updated alias to prevent conflicts
-});
-
-InventoryTransaction.belongsTo(Department, {
-  foreignKey: 'departmentId',
-  as: 'transactionDepartment', // 🔥 Updated alias to prevent conflicts
-});
-
-InventoryTransaction.belongsTo(User, {
-  foreignKey: 'performedby',
-  as: 'transactionUser', // 🔥 Updated alias to prevent conflicts
-});
 
 export default InventoryTransaction;

@@ -122,6 +122,4 @@ User.beforeUpdate(async (user: User) => {
   }
 });
 
-User.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
-
 export default User;

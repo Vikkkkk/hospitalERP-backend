@@ -2,7 +2,8 @@ const bcrypt = require('bcrypt');
 
 const MODULES = [
   { key: 'dashboard', label: 'Dashboard' },
-  { key: 'inventory', label: 'Inventory' },
+  { key: 'main-inventory', label: 'Main Inventory' },
+  { key: 'dept-inventory', label: 'Department Inventory' },
   { key: 'procurement', label: 'Procurement' },
   { key: 'departments', label: 'Department Management' },
   { key: 'user-management', label: 'User Management' },

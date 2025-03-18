@@ -25,7 +25,7 @@ module.exports = {
       password_hash: { type: Sequelize.STRING, allowNull: false },
       isglobalrole: { type: Sequelize.BOOLEAN, defaultValue: false },
       wecom_userid: { type: Sequelize.STRING, allowNull: true, unique: true },
-      canAccess: { type: Sequelize.JSON, allowNull: false, defaultValue: [] }, // ✅ FIXED DEFAULT VALUE
+      canAccess: { type: Sequelize.JSON, allowNull: false, defaultValue: [] },
       deletedAt: { type: Sequelize.DATE, allowNull: true },
       createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
@@ -45,11 +45,9 @@ module.exports = {
       itemname: { type: Sequelize.STRING, allowNull: false },
       category: { type: Sequelize.STRING, allowNull: false },
       unit: { type: Sequelize.STRING, allowNull: false },
-      quantity: { type: Sequelize.INTEGER, allowNull: false },
       minimumStockLevel: { type: Sequelize.INTEGER, allowNull: false },
       restockThreshold: { type: Sequelize.INTEGER, allowNull: false },
       supplier: { type: Sequelize.STRING, allowNull: true },
-      expiryDate: { type: Sequelize.DATE, allowNull: true },
       purchaseDate: { type: Sequelize.DATE, allowNull: true },
       departmentId: {
         type: Sequelize.INTEGER,
@@ -61,6 +59,28 @@ module.exports = {
       createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
     });
+
+    //Inventory Batch Table
+    await queryInterface.createTable("InventoryBatches", {
+      id: {
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
+        type: Sequelize.INTEGER,
+      },
+      itemId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: { model: "Inventory", key: "id" },
+        onDelete: "CASCADE",
+      },
+      quantity: { type: Sequelize.INTEGER, allowNull: false },
+      expiryDate: { type: Sequelize.DATE, allowNull: true },
+      supplier: { type: Sequelize.STRING, allowNull: true },
+      createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
+      updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
+    });
+  
 
     // 📑 Procurement Requests Table
     await queryInterface.createTable("ProcurementRequests", {
@@ -105,7 +125,7 @@ module.exports = {
         references: { model: "Departments", key: "id" },
         onDelete: "SET NULL",
       },
-      transactiontype: { type: Sequelize.STRING, allowNull: false },
+      transactiontype: { type: Sequelize.ENUM("Transfer", "Usage", "Restocking", "Procurement", "Checkout"), allowNull: false },
       quantity: { type: Sequelize.INTEGER, allowNull: false },
       performedby: {
         type: Sequelize.INTEGER,
@@ -117,6 +137,11 @@ module.exports = {
       createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       deletedAt: { type: Sequelize.DATE, allowNull: true },
+      checkoutUser:{type: Sequelize.INTEGER,
+        allowNull: true,
+        references: { model: "Users", key: "id" },
+        onDelete: "SET NULL",},
+        
     });
 
     // 🛡️ Department Permissions Table
@@ -128,23 +153,48 @@ module.exports = {
         references: { model: "Departments", key: "id" },
         onDelete: "CASCADE",
       },
-      module: { type: Sequelize.STRING, allowNull: false }, // Ex: "inventory", "procurement"
+      module: { type: Sequelize.STRING, allowNull: false },
       canAccess: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
       createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       deletedAt: { type: Sequelize.DATE, allowNull: true },
     });
+
+    // 📄 Inventory Requests Table
+    await queryInterface.createTable("InventoryRequests", {
+      id: { allowNull: false, autoIncrement: true, primaryKey: true, type: Sequelize.INTEGER },
+      requestedBy: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: { model: "Users", key: "id" },
+        onDelete: "CASCADE",
+      },
+      departmentId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: { model: "Departments", key: "id" },
+        onDelete: "CASCADE",
+      },
+      itemName: { type: Sequelize.STRING(255), allowNull: false },
+      quantity: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1 },
+      status: {
+        type: Sequelize.ENUM("Pending", "Approved", "Rejected", "Restocking", "Procurement","Completed"),
+        allowNull: false,
+        defaultValue: "Pending",
+      },
+      createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
+      updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
+    });
   },
 
   down: async (queryInterface, Sequelize) => {
+    await queryInterface.dropTable("InventoryRequests");
     await queryInterface.dropTable("DepartmentPermissions");
     await queryInterface.dropTable("InventoryTransaction");
+    await queryInterface.dropTable("InventoryBatches");
     await queryInterface.dropTable("ProcurementRequests");
     await queryInterface.dropTable("Inventory");
     await queryInterface.dropTable("Users");
     await queryInterface.dropTable("Departments");
-
-    // ✅ Drop ENUM if exists
-    await queryInterface.sequelize.query("DROP TYPE IF EXISTS enum_InventoryTransaction_transactiontype;");
   },
 };
