@@ -10,7 +10,12 @@ export interface AuthenticatedRequest extends Request {
     departmentId: number | null;
     isglobalrole: boolean;
     wecom_userid?: string;
-    canAccess: string[];  
+    permissions?: {
+      [module: string]: {
+        read: boolean;
+        write: boolean;
+      };
+    };
   };
 }
 
@@ -61,8 +66,8 @@ export const authenticateUser = async (
       role: user.role,
       departmentId: user.departmentId,
       isglobalrole: user.isglobalrole,
-      wecom_userid: user.wecom_userid ?? undefined, // ✅ Converts `null` to `undefined`
-      canAccess: user.canAccess || [],
+      wecom_userid: user.wecom_userid ?? undefined,
+      permissions: user.permissions || {}, // ✅ Modernized permission model
     };
 
     console.log(`✅ User authenticated: ${user.username} (Role: ${user.role})`);
@@ -80,15 +85,3 @@ export const authenticateUser = async (
     }
   }
 };
-
-
-// 📌 Key Features & Functions:
-// AuthenticatedRequest Interface
-// Extends Request to include user authentication details (e.g., id, role, wecom_userid).
-// Ensures API routes receive an authenticated user's details.
-// authenticateUser Middleware
-// Extracts JWT token from the request header.
-// Verifies & decodes the token using jsonwebtoken.
-// Fetches the user from the database based on the token's id.
-// Assigns user details to req.user to be accessible in subsequent middleware/controllers.
-// Handles authentication errors (expired/invalid token).

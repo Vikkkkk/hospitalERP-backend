@@ -12,14 +12,19 @@ interface UserAttributes {
   password_hash: string;
   isglobalrole: boolean;
   wecom_userid: string | null;
-  canAccess: string[]; // ✅ Added canAccess
+  permissions: {
+    [module: string]: {
+      read: boolean;
+      write: boolean;
+    };
+  };
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date;
 }
 
 interface UserCreationAttributes
-  extends Optional<UserAttributes, 'id' | 'departmentId' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'canAccess'> {}
+  extends Optional<UserAttributes, 'id' | 'departmentId' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'permissions'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
@@ -29,7 +34,12 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public password_hash!: string;
   public isglobalrole!: boolean;
   public wecom_userid!: string | null;
-  public canAccess!: string[]; // ✅ Ensure this is included
+  public permissions!: {
+    [module: string]: {
+      read: boolean;
+      write: boolean;
+    };
+  };
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
   public readonly deletedAt?: Date;
@@ -59,18 +69,18 @@ User.init(
     username: {
       type: DataTypes.STRING(255),
       allowNull: false,
-      unique: true, // ✅ Prevent duplicate usernames
+      unique: true,
     },
     role: {
-      type: DataTypes.ENUM('RootAdmin', 'Admin', 'DepartmentHead', 'Staff'), // ✅ Role validation
+      type: DataTypes.ENUM('RootAdmin', 'Admin', 'DepartmentHead', 'Staff'),
       allowNull: false,
-      defaultValue: 'Staff', // ✅ Default role assigned if none provided
+      defaultValue: 'Staff',
     },
     departmentId: {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: `Departments`,
+        model: 'Departments',
         key: 'id',
       },
       onDelete: 'SET NULL',
@@ -88,10 +98,10 @@ User.init(
       allowNull: true,
       unique: true,
     },
-    canAccess: {  // ✅ Ensure `canAccess` is properly defined in Sequelize
-      type: DataTypes.JSON,
+    permissions: {
+      type: DataTypes.JSONB,  // 🔄 Use JSONB for PostgreSQL efficiency
       allowNull: false,
-      defaultValue: [],
+      defaultValue: {},
     },
     deletedAt: {
       type: DataTypes.DATE,
@@ -103,13 +113,13 @@ User.init(
     modelName: 'User',
     tableName: 'Users',
     timestamps: true,
-    paranoid: true, // ✅ Enables soft deletion
+    paranoid: true,
   }
 );
 
-// ✅ Hooks for password hashing before saving/updating user
+// 🧂 Hash Password Before Save
 User.beforeCreate(async (user: User) => {
-  if (!user.password_hash.startsWith('$2b$')) { // ✅ Check if already hashed
+  if (!user.password_hash.startsWith('$2b$')) {
     const salt = await bcrypt.genSalt(10);
     user.password_hash = await bcrypt.hash(user.password_hash, salt);
   }

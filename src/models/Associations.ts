@@ -6,11 +6,12 @@ import { InventoryBatch } from './InventoryBatch';
 import { InventoryTransaction } from './InventoryTransaction';
 import { InventoryRequest } from './InventoryRequest';
 import { ProcurementRequest } from './ProcurementRequest';
-import { DepartmentPermissions } from './DepartmentPermissions';
 
 // 🧑‍💼 Users ↔ Departments
 User.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
 Department.hasMany(User, { foreignKey: 'departmentId', as: 'users' });
+User.belongsTo(Department, { foreignKey: 'departmentId',as: 'userDepartment' })
+
 
 // 📦 Inventory ↔ Departments
 Inventory.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
@@ -56,9 +57,8 @@ Department.hasMany(ProcurementRequest, { foreignKey: 'departmentId', as: 'procur
 ProcurementRequest.belongsTo(Inventory, { foreignKey: 'title', targetKey: 'itemname', as: 'inventoryItem' });
 Inventory.hasMany(ProcurementRequest, { foreignKey: 'title', sourceKey: 'itemname', as: 'procurementRequests' });
 
-// 🛂 Department Permissions
-DepartmentPermissions.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
-Department.hasMany(DepartmentPermissions, { foreignKey: 'departmentId', as: 'permissions' });
+
+
 
 console.log("✅ Associations initialized once!");
 
@@ -70,5 +70,4 @@ export {
   InventoryTransaction,
   InventoryRequest,
   ProcurementRequest,
-  DepartmentPermissions,
 };

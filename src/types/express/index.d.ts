@@ -11,11 +11,15 @@ declare module 'express-serve-static-core' {
       isglobalrole: boolean;
       createdAt?: Date;
       updatedAt?: Date;
-      canAccess:string[];
+      permissions?: {
+        [module: string]: {
+          read: boolean;
+          write: boolean;
+        };
     };
   }
 }
-
+}
 
 
 

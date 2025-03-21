@@ -1,13 +1,22 @@
 const bcrypt = require('bcrypt');
 
 const MODULES = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'main-inventory', label: 'Main Inventory' },
-  { key: 'dept-inventory', label: 'Department Inventory' },
-  { key: 'procurement', label: 'Procurement' },
-  { key: 'departments', label: 'Department Management' },
-  { key: 'user-management', label: 'User Management' },
+  'dashboard',
+  'main-inventory',
+  'dept-inventory',
+  'procurement',
+  'departments',
+  'user-management',
 ];
+
+// 🔧 Construct permissions object
+const generateFullPermissions = () => {
+  const permissions = {};
+  MODULES.forEach((module) => {
+    permissions[module] = { read: true, write: true };
+  });
+  return permissions;
+};
 
 module.exports = {
   up: async (queryInterface) => {
@@ -21,10 +30,10 @@ module.exports = {
         departmentId: null,
         isglobalrole: true,
         wecom_userid: null,
+        permissions: JSON.stringify(generateFullPermissions()), // ✅ New field
         deletedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-        canAccess: JSON.stringify(MODULES.map(module => module.key)), // ✅ Convert array to JSON
       }
     ], { ignoreDuplicates: true });
   },

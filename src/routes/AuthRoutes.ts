@@ -7,18 +7,17 @@ import { AuthController } from '../controllers/AuthController';
 
 const router = Router();
 
-// ✅ Ensure JWT_SECRET is properly set
+// ✅ Ensure JWT_SECRET is set securely
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRY = parseInt(process.env.JWT_EXPIRY || "28800", 10); // ✅ Convert to number
+const JWT_EXPIRY = parseInt(process.env.JWT_EXPIRY || '28800', 10); // 8 hours default
 
 if (!JWT_SECRET) {
-  throw new Error('🚨 Missing JWT_SECRET in environment variables! Server cannot run.');
+  throw new Error('🚨 JWT_SECRET missing in env variables. Server cannot start.');
 }
 
 /**
- * 🔑 Generate JWT Token
- * - Includes WeCom ID (if linked)
- * - Uses secure environment variables
+ * 🔑 Generate JWT Token securely
+ * - Includes user permissions for frontend use
  */
 const generateToken = (user: User): string => {
   const payload = {
@@ -28,11 +27,10 @@ const generateToken = (user: User): string => {
     departmentId: user.departmentId,
     isglobalrole: user.isglobalrole,
     wecom_userid: user.wecom_userid || null,
-    canAccess: user.canAccess || [], // ✅ Ensure `canAccess` is included
+    permissions: user.permissions || {}, // ✅ Include read/write permissions
   };
 
   const options: SignOptions = { expiresIn: JWT_EXPIRY };
-
   return jwt.sign(payload, JWT_SECRET as string, options);
 };
 
@@ -49,7 +47,6 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
     }
 
     const user = await User.findOne({ where: { username } });
-
     console.log(`🔍 Login Attempt: ${username}`);
 
     if (!user) {
@@ -58,18 +55,15 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
       return;
     }
 
-    // 🔑 Compare input password with stored hash
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    
     if (!isPasswordValid) {
       console.warn(`❌ 密码错误: ${username}`);
       res.status(401).json({ message: '密码错误' });
       return;
     }
 
-    // ✅ Generate JWT Token upon successful login
     const token = generateToken(user);
-    console.log(`✅ 用户登录成功: ${username}`);
+    console.log(`✅ 登录成功: ${username}`);
 
     res.status(200).json({
       message: '登录成功',
@@ -80,8 +74,8 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
         role: user.role,
         departmentId: user.departmentId,
         isglobalrole: user.isglobalrole,
-        wecom_userid: user.wecom_userid || null, // ✅ Ensure it's returned properly,
-        canAccess:user.canAccess || [],
+        wecom_userid: user.wecom_userid || null,
+        permissions: user.permissions || {}, // ✅ Return permissions
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
@@ -93,35 +87,34 @@ router.post('/login', async (req: AuthenticatedRequest, res: Response): Promise<
 });
 
 /**
- * ✅ Verify JWT Token (Used for session persistence)
+ * ✅ Verify Token Route
  */
 router.get('/verify', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     res.status(200).json({
       message: 'Token 有效',
-      user: req.user, // ✅ Pass authenticated user data
+      user: req.user, // ✅ Includes permissions
     });
   } catch (error) {
-    console.error('❌ 令牌验证失败:', error);
-    res.status(500).json({ message: '无法验证Token' });
+    console.error('❌ Token 验证失败:', error);
+    res.status(500).json({ message: '无法验证 Token' });
   }
 });
 
 /**
- * 🚪 Logout Route (Handled by frontend token removal)
+ * 🚪 Logout (handled client-side)
  */
 router.post('/logout', authenticateUser, (_req: AuthenticatedRequest, res: Response): void => {
-  res.status(200).json({ message: '登出成功，请在客户端清除Token' });
+  res.status(200).json({ message: '登出成功，请清除客户端 Token' });
 });
 
 /**
- * 👤 Get Logged-In User Details
- * - Retrieves full user data for the profile page.
+ * 👤 Get Current User Info
  */
 router.get('/me', authenticateUser, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const user = await User.findByPk(req.user!.id, {
-      attributes: ['id', 'username', 'role', 'departmentId', 'isglobalrole', 'wecom_userid', 'createdAt', 'updatedAt'],
+      attributes: ['id', 'username', 'role', 'departmentId', 'isglobalrole', 'wecom_userid', 'permissions', 'createdAt', 'updatedAt'],
     });
 
     if (!user) {
@@ -136,8 +129,9 @@ router.get('/me', authenticateUser, async (req: AuthenticatedRequest, res: Respo
   }
 });
 
-
-// ✨ New: Update user info (WeCom Binding, Profile Updates)
+/**
+ * ✨ User Profile Update (WeCom Bind, etc.)
+ */
 router.patch('/update', authenticateUser, AuthController.updateUser);
 
 export default router;

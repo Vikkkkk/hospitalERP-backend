@@ -25,7 +25,11 @@ module.exports = {
       password_hash: { type: Sequelize.STRING, allowNull: false },
       isglobalrole: { type: Sequelize.BOOLEAN, defaultValue: false },
       wecom_userid: { type: Sequelize.STRING, allowNull: true, unique: true },
-      canAccess: { type: Sequelize.JSON, allowNull: false, defaultValue: [] },
+      permissions: {
+        type: Sequelize.JSONB,  // JSONB optimized for PostgreSQL
+        allowNull: false,
+        defaultValue: {},
+      },
       deletedAt: { type: Sequelize.DATE, allowNull: true },
       createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
       updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
@@ -144,22 +148,7 @@ module.exports = {
         
     });
 
-    // 🛡️ Department Permissions Table
-    await queryInterface.createTable("DepartmentPermissions", {
-      id: { allowNull: false, autoIncrement: true, primaryKey: true, type: Sequelize.INTEGER },
-      departmentId: {
-        type: Sequelize.INTEGER,
-        allowNull: false,
-        references: { model: "Departments", key: "id" },
-        onDelete: "CASCADE",
-      },
-      module: { type: Sequelize.STRING, allowNull: false },
-      canAccess: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
-      createdAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
-      updatedAt: { allowNull: false, type: Sequelize.DATE, defaultValue: Sequelize.fn("NOW") },
-      deletedAt: { type: Sequelize.DATE, allowNull: true },
-    });
-
+  
     // 📄 Inventory Requests Table
     await queryInterface.createTable("InventoryRequests", {
       id: { allowNull: false, autoIncrement: true, primaryKey: true, type: Sequelize.INTEGER },
@@ -189,7 +178,6 @@ module.exports = {
 
   down: async (queryInterface, Sequelize) => {
     await queryInterface.dropTable("InventoryRequests");
-    await queryInterface.dropTable("DepartmentPermissions");
     await queryInterface.dropTable("InventoryTransaction");
     await queryInterface.dropTable("InventoryBatches");
     await queryInterface.dropTable("ProcurementRequests");

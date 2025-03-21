@@ -1,14 +1,12 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
-import { Op } from 'sequelize';
 import { User } from '../models/User';
 import { authenticateUser, AuthenticatedRequest } from '../middlewares/AuthMiddleware';
 import { authorizeAccess } from '../middlewares/AccessMiddleware';
-import { getWeComUser } from '../services/WeComService';
 import { Department } from '../models/Department';
 import { InventoryTransaction } from '../models/InventoryTransaction';
 import { ProcurementRequest } from '../models/ProcurementRequest';
-import { DepartmentPermissions } from '../models/DepartmentPermissions';
+
 
 const router = Router();
 
@@ -31,7 +29,7 @@ router.get(
     try {
       const users = await User.findAll({
         attributes: { exclude: ['password_hash'] },
-        include: [{ model: Department, attributes: ['id', 'name'], as: 'department' }], // ✅ correct alias
+        include: [{ model: Department, attributes: ['id', 'name'], as: 'userDepartment' }], // ✅ correct alias
         paranoid: true, // ✅ Exclude soft-deleted
       });
 
@@ -59,7 +57,7 @@ router.get(
     try {
       const users = await User.findAll({
         attributes: { exclude: ['password_hash'] },
-        include: [{ model: Department, attributes: ['id', 'name'], as: 'department' }],
+        include: [{ model: Department, attributes: ['id', 'name'], as: 'userDepartment' }],
         paranoid: false, // ✅ Fetches all users (including soft-deleted)
       });
 
@@ -84,15 +82,16 @@ router.get(
 router.post(
   '/create',
   authenticateUser,
-  authorizeAccess(['RootAdmin', 'Admin', 'DepartmentHead']),
+  authorizeAccess(['user-management'], 'write'), // 🛡️ Require write access to user management
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
-      const { username, role, password, departmentId, canAccess } = req.body;
+      const { username, role, password, departmentId, permissions } = req.body;
 
       if (!username || !role || !password) {
         return res.status(400).json({ message: '请填写所有必填字段' });
       }
 
+      // 🔎 Check if user exists (even soft-deleted)
       const existingUser = await User.findOne({ where: { username }, paranoid: false });
       if (existingUser) {
         return res.status(409).json({ message: '用户名已存在' });
@@ -100,17 +99,9 @@ router.post(
 
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // ✅ Default permissions
-      let userPermissions = canAccess ?? [];
-
-      // ✅ Fetch department-based permissions if departmentId is provided
-      if (departmentId) {
-        const deptPermissions = await DepartmentPermissions.findAll({
-          where: { departmentId },
-        });
-
-        const departmentAccess = deptPermissions.map(p => p.module);
-        userPermissions = [...new Set([...userPermissions, ...departmentAccess])]; // ✅ Avoid duplicates
+      // 🔐 Validate permissions format (optional strict check)
+      if (permissions && typeof permissions !== 'object') {
+        return res.status(400).json({ message: '权限格式无效 (Invalid permissions format)' });
       }
 
       const newUser = await User.create({
@@ -119,56 +110,48 @@ router.post(
         departmentId: departmentId || req.user!.departmentId,
         password_hash: hashedPassword,
         isglobalrole: false,
-        canAccess: userPermissions, // ✅ Save permissions in DB
+        permissions: permissions || {}, // ✅ Store permissions object
       });
 
-      res.status(201).json({ message: '用户创建成功', user: newUser });
+      res.status(201).json({ message: '✅ 用户创建成功', user: newUser });
     } catch (error) {
-      handleError(res, error, '创建用户失败');
+      handleError(res, error, '❌ 创建用户失败');
     }
   }
 );
 
 /**
- * 🔄 Update User Info (Only Admins)
+ * 🔄 Update User Info (Admin only)
  */
 router.patch(
   '/:id',
   authenticateUser,
-  authorizeAccess(['RootAdmin', 'Admin']),
+  authorizeAccess(['user-management'], 'write'), // 🛡️ Write permission required
   async (req: AuthenticatedRequest, res: Response): Promise<any> => {
     try {
       const { id } = req.params;
-      const { role, departmentId, canAccess } = req.body;
+      const { role, departmentId, permissions } = req.body;
 
       const user = await User.findByPk(id);
       if (!user) {
         return res.status(404).json({ message: '未找到用户' });
       }
 
-      // ✅ Automatically assign permissions based on role & department
-      const updatedPermissions = canAccess ?? [];
-
-      // ✅ Check Department Permissions
-      if (departmentId) {
-        const deptPermission = await DepartmentPermissions.findAll({
-          where: { departmentId },
-        });
-
-        const departmentAccess = deptPermission.map(p => p.module);
-        updatedPermissions.push(...departmentAccess);
+      // 🔍 Optional validation on permissions structure
+      if (permissions && typeof permissions !== 'object') {
+        return res.status(400).json({ message: '权限格式无效 (Invalid permissions format)' });
       }
 
       await user.update({
         role,
         departmentId: departmentId ?? user.departmentId,
-        canAccess: updatedPermissions,
+        permissions: permissions || {}, // ✅ Update permissions directly
       });
 
-      // ✅ Fetch updated user with department details (No raw: true)
+      // 🔄 Fetch updated user with department info
       const updatedUser = await User.findByPk(id, {
         attributes: { exclude: ['password_hash'] },
-        include: [{ model: Department, attributes: ['id', 'name'], as: 'department' }],
+        include: [{ model: Department, attributes: ['id', 'name'], as: 'userDepartment' }],
       });
 
       if (!updatedUser) {
@@ -176,14 +159,14 @@ router.patch(
       }
 
       res.status(200).json({
-        message: '用户信息已更新',
+        message: '✅ 用户信息已更新',
         user: {
           ...updatedUser.toJSON(),
           departmentName: updatedUser.userDepartment ? updatedUser.userDepartment.name : '无',
         },
       });
     } catch (error) {
-      handleError(res, error, '无法更新用户信息');
+      handleError(res, error, '❌ 无法更新用户信息');
     }
   }
 );

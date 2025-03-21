@@ -1,35 +1,34 @@
 import { Request, Response } from 'express';
 import { User } from '../models/User';
+import { Department } from '../models/Department';
 import bcrypt from 'bcrypt';
 
 export class UserController {
-  // ✅ Create a new user (Only by Department Heads or Admins)
+  // ✅ Create a new user
   static async createUser(req: Request, res: Response): Promise<void> {
     try {
-      const { username, role, password, departmentId, isglobalrole } = req.body;
+      const { username, role, password, departmentId, isglobalrole, permissions } = req.body;
 
       if (!username || !role || !password) {
         res.status(400).json({ message: '请填写所有必填字段' });
         return;
       }
 
-      // 🔍 Prevent duplicate usernames
-      const existingUser = await User.findOne({ where: { username } });
+      const existingUser = await User.findOne({ where: { username }, paranoid: false });
       if (existingUser) {
         res.status(409).json({ message: '用户名已存在' });
         return;
       }
 
-      // ✅ Securely hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const newUser = await User.create({
         username,
         role,
-        password_hash: await bcrypt.hash(password, 10),
-        departmentId,
+        password_hash: hashedPassword,
+        departmentId: departmentId ?? null,
         isglobalrole: isglobalrole || false,
-        canAccess: [], 
+        permissions: permissions || {}, // ✅ Use new permission system
       });
 
       res.status(201).json({ message: '用户创建成功', user: newUser });
@@ -39,22 +38,31 @@ export class UserController {
     }
   }
 
-  // 📋 Get all users (Admin Access Only)
+  // 📋 Get all users
   static async getAllUsers(req: Request, res: Response): Promise<void> {
     try {
-      const users = await User.findAll({ attributes: { exclude: ['password_hash'] } });
-      res.status(200).json({ users });
+      const users = await User.findAll({
+        attributes: { exclude: ['password_hash'] },
+        include: [{ model: Department, attributes: ['id', 'name'], as: 'userDepartment' }],
+      });
+
+      const formattedUsers = users.map(user => ({
+        ...user.toJSON(),
+        departmentName: user.userDepartment ? user.userDepartment.name : '无',
+      }));
+
+      res.status(200).json({ users: formattedUsers });
     } catch (error) {
       console.error('❌ 无法获取用户列表:', error);
       res.status(500).json({ message: '无法获取用户列表' });
     }
   }
 
-  // 🔄 Update User Role (Admin Only)
-  static async updateUserRole(req: Request, res: Response): Promise<void> {
+  // 🔄 Update User Role or Permissions
+  static async updateUser(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { role } = req.body;
+      const { role, departmentId, permissions } = req.body;
 
       const user = await User.findByPk(id);
       if (!user) {
@@ -62,17 +70,36 @@ export class UserController {
         return;
       }
 
-      user.role = role;
-      await user.save();
+      await user.update({
+        role: role ?? user.role,
+        departmentId: departmentId ?? user.departmentId,
+        permissions: permissions ?? user.permissions,
+      });
 
-      res.status(200).json({ message: '用户角色已更新', user });
+      const updatedUser = await User.findByPk(id, {
+        attributes: { exclude: ['password_hash'] },
+        include: [{ model: Department, attributes: ['id', 'name'], as: 'userDepartment' }],
+      });
+
+      if (!updatedUser) {
+        res.status(404).json({ message: '无法获取更新后的用户' });
+        return;
+      }
+
+      res.status(200).json({
+        message: '用户信息已更新',
+        user: {
+          ...updatedUser.toJSON(),
+          departmentName: updatedUser.userDepartment ? updatedUser.userDepartment.name : '无',
+        },
+      });
     } catch (error) {
-      console.error('❌ 无法更新用户角色:', error);
-      res.status(500).json({ message: '无法更新用户角色' });
+      console.error('❌ 无法更新用户信息:', error);
+      res.status(500).json({ message: '无法更新用户信息' });
     }
   }
 
-  // 🔑 Reset User Password (Admin & DeptHead)
+  // 🔑 Reset Password
   static async resetUserPassword(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -89,10 +116,8 @@ export class UserController {
         return;
       }
 
-      // ✅ Ensure password is properly hashed
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      user.password_hash = hashedPassword;
-      await user.save();
+      await user.update({ password_hash: hashedPassword });
 
       res.status(200).json({ message: '用户密码已重置' });
     } catch (error) {
@@ -101,7 +126,7 @@ export class UserController {
     }
   }
 
-  // ❌ Soft Delete a User (RootAdmin Only)
+  // ❌ Soft Delete
   static async deleteUser(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -112,9 +137,7 @@ export class UserController {
         return;
       }
 
-      // ✅ Soft delete instead of permanent removal
       await user.update({ deletedAt: new Date() });
-
       res.status(200).json({ message: '用户已软删除' });
     } catch (error) {
       console.error('❌ 无法删除用户:', error);

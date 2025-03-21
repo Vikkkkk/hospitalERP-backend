@@ -71,7 +71,7 @@ export class ProcurementService {
       where: whereCondition,
       include: [
         { model: User, as: 'requester', attributes: ['id', 'username'] },
-        { model: Department, as: 'department', attributes: ['id', 'name'] },
+        { model: Department, as: 'userDepartment', attributes: ['id', 'name'] },
       ],
       order: [['createdAt', 'DESC']],
       limit,
@@ -93,7 +93,7 @@ export class ProcurementService {
   static async getPendingRequests() {
     return await ProcurementRequest.findAll({
       where: { status: 'Pending' },
-      include: [{ model: Department, as: 'department', attributes: ['id', 'name'] }],
+      include: [{ model: Department, as: 'userDepartment', attributes: ['id', 'name'] }],
       order: [['createdAt', 'DESC']],
     });
   }
