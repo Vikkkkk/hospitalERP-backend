@@ -14,11 +14,13 @@ export class AuditTrailService {
    */
   static recordAction(req: Request, action: string, entity: string, entityId: number): void {
     const timestamp = new Date().toISOString();
-    const userId = req.user ? req.user.id : 'Unknown';
-    const departmentId = req.user ? req.user.departmentId : 'Unknown';
-    const logEntry = `[${timestamp}] User ID: ${userId}, Department ID: ${departmentId}, Action: ${action}, Entity: ${entity}, Entity ID: ${entityId}\n`;
+    const user = req.user as { id?: number; departmentId?: number } | undefined;
+    const userId = user?.id ?? 'Unknown';
+    const departmentId = user?.departmentId ?? 'Unknown';
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'Unknown';
+    const logEntry = `[${timestamp}] Action: ${action} | Entity: ${entity} (ID: ${entityId}) | User: ${userId} | Department: ${departmentId} | IP: ${ipAddress} | Path: ${req.path}\n`;
 
-    console.log(`📝 Audit: ${logEntry}`);
+    console.log(`📝 Audit: ${logEntry.trim()}`);
 
     // Write the log to a file
     fs.appendFile(this.auditLogFilePath, logEntry, (err) => {

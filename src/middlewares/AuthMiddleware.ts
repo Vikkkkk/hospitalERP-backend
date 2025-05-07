@@ -30,7 +30,7 @@ if (!JWT_SECRET) {
  */
 const getTokenFromHeader = (req: Request): string | null => {
   const authHeader = req.header('Authorization');
-  return authHeader?.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : null;
+  return authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 };
 
 /**

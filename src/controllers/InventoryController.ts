@@ -15,8 +15,7 @@ export class InventoryController {
       );
       res.status(200).json(result);
     } catch (error) {
-      console.error('❌ 获取库存信息失败:', error);
-      res.status(500).json({ message: '无法获取库存信息' });
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -29,7 +28,6 @@ export class InventoryController {
       await InventoryService.addOrUpdateInventory(itemName, category, unit, batches, departmentId);
       res.status(201).json({ message: '库存物品已创建/更新' });
     } catch (error) {
-      console.error('❌ 添加库存物品失败:', error);
       res.status(500).json({ message: (error as Error).message });
     }
   }
@@ -43,7 +41,6 @@ export class InventoryController {
       await InventoryService.transferStock(itemName, quantity, departmentId);
       res.status(200).json({ message: '库存成功转移' });
     } catch (error) {
-      console.error('❌ 库存转移失败:', error);
       res.status(500).json({ message: (error as Error).message });
     }
   }
@@ -57,7 +54,6 @@ export class InventoryController {
       await InventoryService.updateInventoryUsage(itemName, usedQuantity, departmentId);
       res.status(200).json({ message: '库存使用情况已更新' });
     } catch (error) {
-      console.error('❌ 更新库存使用失败:', error);
       res.status(500).json({ message: (error as Error).message });
     }
   }
@@ -76,8 +72,7 @@ export class InventoryController {
       );
       res.status(200).json(transactions);
     } catch (error) {
-      console.error('❌ 获取库存交易失败:', error);
-      res.status(500).json({ message: '无法获取库存交易记录' });
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -89,8 +84,7 @@ export class InventoryController {
       const requests = await InventoryRequestService.getInventoryRequests();
       res.status(200).json(requests);
     } catch (error) {
-      console.error('❌ 获取库存申请失败:', error);
-      res.status(500).json({ message: '无法获取库存申请' });
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -103,8 +97,7 @@ export class InventoryController {
       await InventoryRequestService.processRequest(Number(requestId), 'Approved', 1);
       res.status(200).json({ message: '库存申请已批准' });
     } catch (error) {
-      console.error('❌ 批准库存申请失败:', error);
-      res.status(500).json({ message: '无法批准库存申请' });
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -117,8 +110,7 @@ export class InventoryController {
       await InventoryRequestService.processRequest(Number(requestId), 'Rejected', 1);
       res.status(200).json({ message: '库存申请已拒绝' });
     } catch (error) {
-      console.error('❌ 拒绝库存申请失败:', error);
-      res.status(500).json({ message: '无法拒绝库存申请' });
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -130,8 +122,7 @@ export class InventoryController {
       const requests = await ProcurementService.getPendingRequests();
       res.status(200).json(requests);
     } catch (error) {
-      console.error('❌ 获取采购请求失败:', error);
-      res.status(500).json({ message: '无法获取采购请求' });
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -141,19 +132,21 @@ export class InventoryController {
   static async submitProcurementRequest(req: Request, res: Response): Promise<void> {
     try {
       const { title, quantity, deadlineDate, departmentId, priorityLevel, description } = req.body;
+      const userId = (req.user as any)?.id; // Safely assert user
+
       await ProcurementService.submitRequest(
-        title, 
-        description, 
-        departmentId, 
-        req.user!.id,  // ✅ Add `requestedBy` parameter
-        priorityLevel, 
-        deadlineDate, 
+        title,
+        description,
+        departmentId,
+        userId,
+        priorityLevel,
+        deadlineDate,
         quantity
       );
+
       res.status(201).json({ message: '采购请求已提交' });
     } catch (error) {
-      console.error('❌ 提交采购请求失败:', error);
-      res.status(500).json({ message: '无法提交采购请求' });
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -166,8 +159,7 @@ export class InventoryController {
       await InventoryService.checkoutInventory(Number(requestId), Number(checkoutUserId));
       res.status(200).json({ message: '物资成功核销' });
     } catch (error) {
-      console.error('❌ 物资核销失败:', error);
-      res.status(500).json({ message: '无法核销物资' });
+      res.status(500).json({ message: (error as Error).message });
     }
   }
 }

@@ -6,6 +6,7 @@ import { Department } from './Department';
 interface InventoryRequestAttributes {
   id: number;
   requestedBy: number;
+  checkoutUser?:number;
   departmentId: number;
   itemName: string;
   quantity: number;
@@ -15,13 +16,14 @@ interface InventoryRequestAttributes {
 }
 
 interface InventoryRequestCreationAttributes
-  extends Optional<InventoryRequestAttributes, 'id' | 'status'> {}
+  extends Optional<InventoryRequestAttributes, 'id' | 'status'| 'checkoutUser'> {}
 
 export class InventoryRequest
   extends Model<InventoryRequestAttributes, InventoryRequestCreationAttributes>
   implements InventoryRequestAttributes {
   public id!: number;
   public requestedBy!: number;
+  public checkoutUser?: number;
   public departmentId!: number;
   public itemName!: string;
   public quantity!: number;
@@ -47,6 +49,14 @@ InventoryRequest.init(
         key: 'id',
       },
       onDelete: 'CASCADE',
+    },
+    checkoutUser: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'Users', // assumes your user table is named Users
+        key: 'id',
+      },
     },
     departmentId: {
       type: DataTypes.INTEGER,

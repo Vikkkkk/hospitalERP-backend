@@ -5,20 +5,23 @@ import { User } from '../models/User';
 import QRCode from 'qrcode';
 
 export class InventoryTransactionService {
-  
   /**
    * 📊 Fetch check-in and check-out history for a department
    */
   static async getDepartmentTransactions(departmentId: number) {
     const transactions = await InventoryTransaction.findAll({
       where: { departmentId },
-      include: [{ model: Inventory, as: 'inventory' }],
+      include: [
+        { model: Inventory, as: 'inventoryItem' },
+        { model: User, as: 'performedByUser', attributes: ['id', 'username'] },
+        { model: User, as: 'checkoutUserInfo', attributes: ['id', 'username'] },
+      ],
       order: [['createdAt', 'DESC']],
     });
 
     return {
       checkInHistory: transactions.filter(t => t.transactiontype === 'Transfer'),
-      checkOutHistory: transactions.filter(t => t.transactiontype === 'Usage'),
+      checkOutHistory: transactions.filter(t => t.transactiontype === 'Usage' || t.transactiontype === 'Checkout'),
     };
   }
 
@@ -27,7 +30,11 @@ export class InventoryTransactionService {
    */
   static async getAllTransactions() {
     return await InventoryTransaction.findAll({
-      include: [{ model: Inventory, as: 'inventory' }],
+      include: [
+        { model: Inventory, as: 'inventoryItem' },
+        { model: User, as: 'performedByUser', attributes: ['id', 'username'] },
+        { model: User, as: 'checkoutUserInfo', attributes: ['id', 'username'] },
+      ],
       order: [['createdAt', 'DESC']],
     });
   }
@@ -67,7 +74,6 @@ export class InventoryTransactionService {
     const user = await User.findByPk(userId);
     if (!user) throw new Error('用户未找到');
 
-    // ✅ Log Checkout Transaction
     await InventoryTransaction.create({
       itemname: request.itemName,
       category: 'General',
@@ -79,7 +85,6 @@ export class InventoryTransactionService {
       checkoutUser: request.requestedBy,
     });
 
-    // ✅ Mark Request as "Completed"
     request.status = 'Completed';
     await request.save();
 

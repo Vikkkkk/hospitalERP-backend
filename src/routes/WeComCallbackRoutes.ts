@@ -2,6 +2,12 @@ import { Router, Request, Response } from 'express';
 import WechatCrypto from 'wechat-crypto';
 import dotenv from 'dotenv';
 import { handleWeComApprovalCallback } from '../services/WeComService';
+import axios from 'axios';
+import { User } from '../models/User';
+import { InventoryRequest } from '../models/InventoryRequest';
+import { Inventory } from '../models/Inventory';
+import { InventoryTransaction } from '../models/InventoryTransaction';
+import { InventoryService } from '../services/InventoryService';
 
 dotenv.config();
 
@@ -89,6 +95,86 @@ router.post('/webhook', async (req: Request, res: Response): Promise<any> => {
   }
 });
 
+
+router.get('/inventory-requests', async (req: Request, res: Response):Promise<any> => {
+  const { code, state } = req.query;
+  const requestId = Number(state);
+
+  if (!code || !state) {
+    return res.status(400).send('❌ 缺少必要参数 (code 或 state)');
+  }
+
+  try {
+    // 🔐 Get WeCom Access Token
+    const tokenRes = await axios.get(`https://qyapi.weixin.qq.com/cgi-bin/gettoken`, {
+      params: {
+        corpid: WECOM_CORP_ID,
+        corpsecret: process.env.WECOM_CORP_SECRET,
+      },
+    });
+
+    const access_token = tokenRes.data.access_token;
+    // 👤 Get user info from code
+    const userRes = await axios.get(`https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo`, {
+      params: {
+        access_token,
+        code,
+      },
+    });
+
+    const wecom_userid = userRes.data.UserId;
+    if (!wecom_userid) return res.status(400).send('❌ 无法获取 WeCom 用户信息');
+
+    // 🔍 Find user in system
+    const user = await User.findOne({ where: { wecom_userid } });
+    if (!user) return res.status(404).send('❌ 找不到用户');
+
+    // 🔍 Find IR
+    const request = await InventoryRequest.findByPk(requestId);
+    if (!request || request.status !== 'Approved') {
+      return res.status(400).send('❌ 无效的申请或已处理');
+    }
+
+    // if (request.requestedBy !== user.id) {
+    //   return res.status(403).send('⛔️ 此申请不属于你，无法核销');
+    // }
+   console.log("request data:",request)
+    // 🧾 Lookup department inventory item
+    const departmentItem = await Inventory.findOne({
+      where: {
+        itemname: request.itemName,
+        departmentId:null,
+      },
+    });
+
+    if (!departmentItem) {
+      return res.status(404).send('❌ 一级库中无此物品');
+    }
+
+    // ✅ Create transaction
+    await InventoryTransaction.create({
+      itemname: request.itemName,
+      inventoryid: departmentItem.id,
+      departmentId: request.departmentId,
+      transactiontype: 'Checkout',
+      quantity: request.quantity,
+      performedby: user.id,
+      checkoutUser: user.id,
+      category: departmentItem.category,
+    });
+
+    await InventoryService.allocateFromBatches(departmentItem.id, request.quantity);
+
+    request.status = 'Completed';
+    await request.save();
+
+    return res.send('✅ 核销成功！你可以关闭此窗口。');
+  } catch (error) {
+    console.error('❌ WeCom OAuth 核销失败:', error);
+    return res.status(500).send('❌ 核销过程中出错');
+  }
+});
+
 /**
  * 📦 Helper Function: Parse WeCom XML Data
  * ✅ Extracts `approvalId` and `status` from decrypted XML response.
@@ -108,5 +194,7 @@ function parseWeComXml(xmlString: string): { approvalId?: string; status?: strin
     return {};
   }
 }
+
+
 
 export default router;

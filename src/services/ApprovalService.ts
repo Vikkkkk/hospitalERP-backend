@@ -2,12 +2,15 @@
 
 import { ProcurementRequest } from '../models/ProcurementRequest';
 
+// Type for allowed WeCom statuses mapped to internal status
+type WeComStatus = 'approved' | 'rejected' | 'returned' | 'completed';
+
 export class ApprovalService {
   // ✅ Define valid status values
-  static validStatuses: Record<string, 'Pending' | 'Approved' | 'Rejected' | 'Completed'> = {
+  static validStatuses: Record<WeComStatus, 'Pending' | 'Approved' | 'Rejected' | 'Completed'> = {
     approved: 'Approved',
     rejected: 'Rejected',
-    returned: 'Pending', // Returned requests go back to Pending for re-review
+    returned: 'Pending',
     completed: 'Completed',
   };
 
@@ -15,7 +18,10 @@ export class ApprovalService {
    * 🔄 Handle approval response from WeCom
    * - Updates the procurement request status based on approval outcome.
    */
-  static async handleApprovalResponse(approvalId: string, status: string): Promise<{ success: boolean; message: string }> {
+  static async handleApprovalResponse(
+    approvalId: string,
+    status: string
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const request = await ProcurementRequest.findOne({ where: { approvalId } });
 
@@ -24,20 +30,24 @@ export class ApprovalService {
         return { success: false, message: 'Procurement request not found' };
       }
 
-      // ✅ Normalize status using the valid status mapping
-      const normalizedStatus = this.validStatuses[status.toLowerCase()] || 'Pending';
-      request.status = normalizedStatus;
-      await request.save();
+      const normalizedStatus = this.validStatuses[status.toLowerCase() as WeComStatus];
 
-      console.log(`✅ Approval status updated for request ID ${approvalId}: ${normalizedStatus}`);
-      return { success: true, message: `Status updated to ${normalizedStatus}` };
+      if (!normalizedStatus) {
+        console.warn(`⚠️ Unrecognized status '${status}' received from WeCom. Defaulting to 'Pending'.`);
+        request.status = 'Pending';
+      } else {
+        request.status = normalizedStatus;
+      }
+
+      await request.save();
+      console.log(`✅ Approval status updated for request ID ${approvalId}: ${request.status}`);
+      return { success: true, message: `Status updated to ${request.status}` };
     } catch (error) {
       console.error(`❌ Error updating approval status for ID ${approvalId}:`, (error as Error).message);
       return { success: false, message: 'Error updating approval status' };
     }
   }
 }
-
 
 
 

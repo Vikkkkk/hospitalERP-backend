@@ -7,12 +7,12 @@ import { Department } from '../models/Department';
 export class ProcurementService {
   /**
    * 📌 Submit a Procurement Request
-   * - This is triggered when:
+   * - Triggered when:
    *   1️⃣ An IR cannot be fulfilled from main inventory
-   *   2️⃣ 后勤部 manually submits a procurement request
+   *   2️⃣ 后勤部 manually submits a request
    */
   static async submitRequest(
-    title: string, 
+    title: string,
     description: string,
     departmentId: number,
     requestedBy: number,
@@ -24,31 +24,28 @@ export class ProcurementService {
       throw new Error('所有字段都是必填项');
     }
 
-    // ✅ Ensure valid priority level
     if (!['Low', 'Medium', 'High'].includes(priorityLevel)) {
       throw new Error('无效的优先级');
     }
 
-    // ✅ Create a new procurement request
     const newRequest = await ProcurementRequest.create({
-      title: `Procurement - ${title}`, // ✅ Automatically generate title
+      title: `Procurement - ${title}`,
       description: description || `Auto-generated procurement request for ${title}`,
       departmentId,
       priorityLevel,
       deadlineDate,
       quantity,
-      requestedBy: 1, // ✅ System-generated request
+      requestedBy,
       status: 'Pending',
     });
 
-    // 🔔 Notify approvers (采购部)
     await notifyApprovalRequired(newRequest.id, '采购部');
 
     return newRequest;
   }
 
   /**
-   * 📋 Fetch All Procurement Requests (With Filters & Pagination)
+   * 📋 Fetch Procurement Requests (Supports pagination + filters)
    */
   static async getProcurementRequests(
     departmentId?: number,
@@ -57,21 +54,16 @@ export class ProcurementService {
     limit: number = 10
   ) {
     const offset = (page - 1) * limit;
-
     const whereCondition: any = {};
 
-    if (departmentId) {
-      whereCondition.departmentId = departmentId;
-    }
-    if (status) {
-      whereCondition.status = status;
-    }
+    if (departmentId) whereCondition.departmentId = departmentId;
+    if (status) whereCondition.status = status;
 
     const { rows: requests, count } = await ProcurementRequest.findAndCountAll({
       where: whereCondition,
       include: [
         { model: User, as: 'requester', attributes: ['id', 'username'] },
-        { model: Department, as: 'userDepartment', attributes: ['id', 'name'] },
+        { model: Department, as: 'department', attributes: ['id', 'name'] },
       ],
       order: [['createdAt', 'DESC']],
       limit,
@@ -87,28 +79,23 @@ export class ProcurementService {
   }
 
   /**
-   * 📌 Fetch Pending Procurement Requests
-   * - Used in InventoryController.ts to list pending requests
+   * 📌 Get Pending Procurement Requests (e.g. for review dashboards)
    */
   static async getPendingRequests() {
     return await ProcurementRequest.findAll({
       where: { status: 'Pending' },
-      include: [{ model: Department, as: 'userDepartment', attributes: ['id', 'name'] }],
+      include: [{ model: Department, as: 'department', attributes: ['id', 'name'] }],
       order: [['createdAt', 'DESC']],
     });
   }
 
   /**
-   * 🔄 Update Procurement Request Status (Approve / Reject / Complete)
+   * 🔄 Update Procurement Request Status
    */
   static async updateRequestStatus(requestId: number, status: 'Pending' | 'Approved' | 'Rejected' | 'Completed') {
     const request = await ProcurementRequest.findByPk(requestId);
+    if (!request) throw new Error('未找到采购请求');
 
-    if (!request) {
-      throw new Error('未找到采购请求');
-    }
-
-    // ✅ Ensure status is valid
     if (!['Pending', 'Approved', 'Rejected', 'Completed'].includes(status)) {
       throw new Error('无效的请求状态');
     }

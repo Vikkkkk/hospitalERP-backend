@@ -8,9 +8,6 @@ import { Op } from 'sequelize';
 import { User } from '../models/User';
 
 export class InventoryService {
-  /**
-   * 🔍 Get inventory list (Main Warehouse & Department Inventory)
-   */
   static async getInventory(departmentId: number | null = null) {
     return await Inventory.findAll({
       where: { departmentId },
@@ -18,31 +15,24 @@ export class InventoryService {
     });
   }
 
-  /**
-   * 🔍 Get inventory list with total quantity which is a virtual field in frontend type. 
-   */
   static async getInventoryWithTotalQuantity(departmentId: number | null = null) {
+    const sanitizedDeptId = departmentId === 0 ? null : departmentId;
+    console.log('📦 Loading inventory for department:', sanitizedDeptId);
+
     const inventoryItems = await Inventory.findAll({
-      where: { departmentId },
+      where: { departmentId: sanitizedDeptId },
       include: [{ model: InventoryBatch, as: 'batches' }],
     });
 
-    // ➕ Inject totalQuantity
-    const itemsWithQuantity = inventoryItems.map(item => {
+    return inventoryItems.map(item => {
       const totalQuantity = item.batches?.reduce((sum, batch) => sum + batch.quantity, 0) || 0;
       return {
         ...item.toJSON(),
         totalQuantity,
       };
     });
-
-    return itemsWithQuantity;
   }
 
-  /**
-   * ➕ Add new inventory item OR restock existing inventory
-   * ✅ Supports batch tracking
-   */
   static async addOrUpdateInventory(
     itemName: string,
     category: 'Medical Supply' | 'Drug' | 'Office Supply' | 'Equipment' | 'General',
@@ -50,6 +40,7 @@ export class InventoryService {
     batches: { quantity: number; expiryDate?: Date; supplier?: string }[],
     departmentId: number | null
   ) {
+    console.log('🚨 Adding inventory with departmentId:', departmentId);
     return await sequelize.transaction(async (t) => {
       let inventoryItem = await Inventory.findOne({ where: { itemname: itemName, departmentId }, transaction: t });
 
@@ -81,11 +72,6 @@ export class InventoryService {
     });
   }
 
-  /**
-   * 🔄 Transfer stock from main warehouse to a department
-   * ✅ Supports batch tracking
-   * ✅ Auto-creates purchase request if below threshold
-   */
   static async transferStock(itemName: string, quantity: number, departmentId: number) {
     return await sequelize.transaction(async (t) => {
       const warehouseItem = await Inventory.findOne({
@@ -108,7 +94,6 @@ export class InventoryService {
         await batch.save({ transaction: t });
       }
 
-      // ✅ Transfer stock to department inventory
       let departmentItem = await Inventory.findOne({ where: { itemname: itemName, departmentId }, transaction: t });
 
       if (!departmentItem) {
@@ -135,18 +120,17 @@ export class InventoryService {
         { transaction: t }
       );
 
-      // ✅ Auto-create restocking request if needed
       const totalStock = await InventoryBatch.sum('quantity', { where: { itemId: warehouseItem.id } });
       if (totalStock < warehouseItem.restockThreshold) {
         await ProcurementRequest.create(
           {
             title: `Restocking Request - ${itemName}`,
             description: `库存低于阈值 (仅剩 ${totalStock})，需要补货`,
-            departmentId: null, // 采购部 Todo!
-            requestedBy: 1, // System generated
+            departmentId: null,
+            requestedBy: 1,
             priorityLevel: 'High',
             deadlineDate: new Date(),
-            quantity: warehouseItem.minimumStockLevel * 2, // Suggest double the min level
+            quantity: warehouseItem.minimumStockLevel * 2,
             status: 'Pending',
           },
           { transaction: t }
@@ -155,43 +139,34 @@ export class InventoryService {
     });
   }
 
-    /**
-   * 🔄 Allocate stock from batches (FIFO - First Expiry First Out)
-   * ✅ Deducts stock batch-by-batch
-   * ✅ Ensures oldest (earliest expiry) batches are used first
-   */
-    static async allocateFromBatches(inventoryId: number, requiredQuantity: number): Promise<boolean> {
-      return await sequelize.transaction(async (t) => {
-        const batches = await InventoryBatch.findAll({
-          where: { itemId: inventoryId },
-          order: [['expiryDate', 'ASC']], // ✅ Use earliest expiry first
-          transaction: t,
-        });
-  
-        let remainingQuantity = requiredQuantity;
-  
-        for (const batch of batches) {
-          if (remainingQuantity <= 0) break;
-  
-          if (batch.quantity >= remainingQuantity) {
-            batch.quantity -= remainingQuantity;
-            remainingQuantity = 0;
-          } else {
-            remainingQuantity -= batch.quantity;
-            batch.quantity = 0;
-          }
-  
-          await batch.save({ transaction: t });
-        }
-  
-        // ✅ If we couldn't fulfill the full quantity, return false
-        return remainingQuantity === 0;
+  static async allocateFromBatches(inventoryId: number, requiredQuantity: number): Promise<boolean> {
+    return await sequelize.transaction(async (t) => {
+      const batches = await InventoryBatch.findAll({
+        where: { itemId: inventoryId },
+        order: [['expiryDate', 'ASC']],
+        transaction: t,
       });
-    }
 
-  /**
-   * ✅ Checkout Inventory (核销物资)
-   */
+      let remainingQuantity = requiredQuantity;
+
+      for (const batch of batches) {
+        if (remainingQuantity <= 0) break;
+
+        if (batch.quantity >= remainingQuantity) {
+          batch.quantity -= remainingQuantity;
+          remainingQuantity = 0;
+        } else {
+          remainingQuantity -= batch.quantity;
+          batch.quantity = 0;
+        }
+
+        await batch.save({ transaction: t });
+      }
+
+      return remainingQuantity === 0;
+    });
+  }
+
   static async checkoutInventory(requestId: number, checkoutUserId: number) {
     return await sequelize.transaction(async (t) => {
       const request = await InventoryRequest.findByPk(requestId, { transaction: t });
@@ -202,8 +177,8 @@ export class InventoryService {
       const user = await User.findByPk(checkoutUserId);
       if (!user) throw new Error('用户未找到');
 
-      // ✅ Mark as completed
       request.status = 'Completed';
+      request.checkoutUser = checkoutUserId;
       await request.save({ transaction: t });
 
       await InventoryTransaction.create(
@@ -221,9 +196,6 @@ export class InventoryService {
     });
   }
 
-  /**
-   * ✏️ Update daily inventory usage (Check-out process)
-   */
   static async updateInventoryUsage(itemName: string, usedQuantity: number, departmentId: number) {
     return await sequelize.transaction(async (t) => {
       const departmentItem = await Inventory.findOne({
@@ -252,7 +224,7 @@ export class InventoryService {
           departmentId,
           transactiontype: 'Usage',
           quantity: usedQuantity,
-          performedby: null, // To be replaced with user ID
+          performedby: null,
           itemname: itemName,
           category: departmentItem.category,
         },
@@ -261,9 +233,6 @@ export class InventoryService {
     });
   }
 
-  /**
-   * 📑 Get inventory transactions (Check-in, Check-out, Restocking, Transfers)
-   */
   static async getInventoryTransactions(
     departmentId: number | null = null,
     type?: string,

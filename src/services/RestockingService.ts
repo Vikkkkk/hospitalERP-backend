@@ -6,29 +6,23 @@ import { ProcurementRequest } from '../models/ProcurementRequest';
 import { Department } from '../models/Department';
 import { notifyProcurementStaff } from './NotificationService';
 import { Op } from 'sequelize';
-import { sequelize } from '../models';
 
 /**
  * 🔄 Restocking Service - Handles automated stock replenishment.
  */
 export class RestockingService {
   /**
-   * 🚀 Check for low-stock inventory and trigger restocking requests.
+   * 🚀 Automatically checks and triggers restocking if below minimum stock.
    */
   static async checkAndTriggerRestocking(): Promise<void> {
     try {
-      // ✅ Find all items where total batch stock is below the minimum stock level
-      const lowStockItems = await Inventory.findAll();
+      const allItems = await Inventory.findAll();
 
-      for (const item of lowStockItems) {
-        // ✅ Calculate total stock from batches
+      for (const item of allItems) {
         const totalStock = await InventoryBatch.sum('quantity', { where: { itemId: item.id } });
 
-        if (totalStock >= item.minimumStockLevel) {
-          continue; // ✅ Skip items that still have enough stock
-        }
+        if (totalStock >= item.minimumStockLevel) continue;
 
-        // ✅ Check if a pending restocking request already exists
         const existingRequest = await ProcurementRequest.findOne({
           where: {
             title: `Restock: ${item.itemname}`,
@@ -36,7 +30,6 @@ export class RestockingService {
           },
         });
 
-        // ✅ If no pending request, create a new one
         if (!existingRequest) {
           const department = item.departmentId ? await Department.findByPk(item.departmentId) : null;
 
@@ -44,22 +37,17 @@ export class RestockingService {
             title: `Restock: ${item.itemname}`,
             description: `Automatically triggered restocking for ${item.itemname}.`,
             departmentId: item.departmentId || null,
-            requestedBy: 1, // System user ID placeholder
+            requestedBy: 1, // System user
             priorityLevel: 'High',
-            deadlineDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3-day deadline
-            quantity: item.minimumStockLevel * 2, // 🚀 Request double the minimum to avoid frequent shortages
+            deadlineDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+            quantity: item.minimumStockLevel * 2,
             status: 'Pending',
           });
 
-          // ✅ Send notifications
-          notifyProcurementStaff(item.itemname, department ? department.name : 'Main Warehouse');
+          notifyProcurementStaff(item.itemname, department?.name || 'Main Warehouse');
 
-          if (department) {
-            // Notify department head if stock is for a specific department
-            const departmentHead = await department.get('headId');
-            if (departmentHead) {
-              console.log(`📢 Notifying Department Head (${departmentHead}) about low stock for ${item.itemname}`);
-            }
+          if (department?.headId) {
+            console.log(`📢 Notifying Department Head (${department.headId}) about low stock for ${item.itemname}`);
           }
         }
       }
@@ -69,7 +57,7 @@ export class RestockingService {
   }
 
   /**
-   * 📦 Create a restocking request manually
+   * 🛠️ Manually create a restocking request
    */
   static async createRestockingRequest(itemId: number, quantity: number, requestedBy: number) {
     const item = await Inventory.findByPk(itemId);
@@ -78,10 +66,10 @@ export class RestockingService {
     await ProcurementRequest.create({
       title: `Restocking - ${item.itemname}`,
       description: `Manual restocking request for ${item.itemname}.`,
-      departmentId: null, // Main warehouse restocking
+      departmentId: null,
       requestedBy,
       priorityLevel: 'High',
-      deadlineDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day deadline
+      deadlineDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       quantity,
       status: 'Pending',
     });
@@ -90,5 +78,4 @@ export class RestockingService {
   }
 }
 
-// ✅ Properly export the RestockingService
 export default RestockingService;

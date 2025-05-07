@@ -1,7 +1,8 @@
+// backend-api/src/services/AuditService.ts
 import { InventoryTransaction } from '../models/InventoryTransaction';
 import { LoggerService } from './LoggerService';
 
-type TransactionType = 'Transfer' | 'Usage' | 'Restocking';
+type TransactionType = 'Transfer' | 'Usage' | 'Restocking' | 'Checkout';
 
 interface AuditLogParams {
   itemname: string;
@@ -11,9 +12,10 @@ interface AuditLogParams {
   inventoryid: number;
   quantity: number;
   transactiontype: TransactionType;
+  checkoutUser?: number; // ✅ Optional checkout user for QR/manual checkouts
 }
 
-// 📜 Logs inventory-related transactions (transfers, usage, restocking)
+// 📜 Logs inventory-related transactions (transfers, usage, restocking, checkout)
 export const logTransaction = async ({
   itemname,
   category,
@@ -22,19 +24,18 @@ export const logTransaction = async ({
   inventoryid,
   quantity,
   transactiontype,
+  checkoutUser,
 }: AuditLogParams): Promise<void> => {
   try {
     // ✅ Validate transaction type
-    if (!['Transfer', 'Usage', 'Restocking'].includes(transactiontype)) {
+    if (!['Transfer', 'Usage', 'Restocking', 'Checkout'].includes(transactiontype)) {
       throw new Error(`❌ Invalid transaction type: ${transactiontype}`);
     }
 
-    // ✅ Ensure itemname & category are valid
     if (!itemname || !category) {
       throw new Error(`❌ Missing itemname or category for transaction`);
     }
 
-    // ✅ Create inventory transaction entry
     await InventoryTransaction.create({
       itemname,
       category,
@@ -43,16 +44,15 @@ export const logTransaction = async ({
       inventoryid,
       quantity,
       transactiontype,
+      checkoutUser,
     });
 
-    // ✅ Improved success logging with details
     LoggerService.info(
       `✅ Transaction Logged | Type: ${transactiontype} | Item: ${itemname} (${category}) | Quantity: ${quantity} | By User ID: ${performedby} | Department: ${departmentId || 'Warehouse'}`
     );
   } catch (err) {
-    const error = err as Error; // Explicitly cast error type
+    const error = err as Error;
 
-    // ✅ Improved error logging with more details
     LoggerService.error(
       `❌ Failed to log transaction: ${error.message} | Type: ${transactiontype} | Item: ${itemname} (${category}) | Quantity: ${quantity} | PerformedBy: ${performedby} | DepartmentId: ${departmentId || 'Warehouse'} | InventoryId: ${inventoryid}`
     );

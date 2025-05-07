@@ -1,9 +1,10 @@
 import { InventoryRequest } from '../models/InventoryRequest';
 import { Inventory } from '../models/Inventory';
 import { InventoryBatch } from '../models/InventoryBatch';
-import { InventoryService } from '../services/InventoryService';
-import { RestockingService } from './RestockingService'; // ✅ Added RestockingService
-import { Op } from 'sequelize';
+import { InventoryService } from './InventoryService';
+import { RestockingService } from './RestockingService';
+import { User } from '../models/User';
+import { Department } from '../models/Department';
 
 export class InventoryRequestService {
   /**
@@ -20,11 +21,22 @@ export class InventoryRequestService {
   }
 
   /**
-   * 🔍 Fetch all inventory requests
+   * 🔍 Fetch all inventory requests (supports optional filtering)
    */
-  static async getInventoryRequests(status?: string) { // ✅ Fixed method name to match controller
-    const whereClause = status ? { status } : {};
-    return await InventoryRequest.findAll({ where: whereClause });
+  static async getInventoryRequests(status?: string, departmentId?: number) {
+    const whereClause: any = {};
+    if (status) whereClause.status = status;
+    if (departmentId) whereClause.departmentId = departmentId;
+
+    return await InventoryRequest.findAll({
+      where: whereClause,
+      include: [
+        { model: User, as: 'requestedUser', attributes: ['id', 'username'] },
+        { model: Department, as: 'department', attributes: ['id', 'name'] },
+        { model: User, as: 'checkoutUserInfo', attributes: ['id', 'username'] },
+        { model: Inventory, as: 'inventoryItem', attributes: ['id', 'itemname'] },
+      ],
+    });
   }
 
   /**
@@ -33,30 +45,24 @@ export class InventoryRequestService {
   static async processRequest(requestId: number, status: 'Approved' | 'Rejected', approverId: number) {
     const request = await InventoryRequest.findByPk(requestId);
     if (!request) throw new Error('Request not found');
-  
+
     if (status === 'Approved') {
       const inventoryItem = await Inventory.findOne({ where: { itemname: request.itemName, departmentId: null } });
-  
-      if (!inventoryItem) {
-        throw new Error(`物资 ${request.itemName} 在主库存中不存在`);
-      }
-  
-      // ✅ Check total stock in batches
+      if (!inventoryItem) throw new Error(`物资 ${request.itemName} 在主库存中不存在`);
+
       const totalStock = await InventoryBatch.sum('quantity', { where: { itemId: inventoryItem.id } });
-  
       if (totalStock < request.quantity) {
         request.status = 'Restocking';
         await request.save();
         throw new Error(`库存不足 (仅剩 ${totalStock} 件)，需要补货`);
       }
-  
-      // ✅ Deduct stock from main inventory batches
+
       let remainingQuantity = request.quantity;
       const batches = await InventoryBatch.findAll({
         where: { itemId: inventoryItem.id },
-        order: [['expiryDate', 'ASC']], // ✅ Always use closest expiry first
+        order: [['expiryDate', 'ASC']],
       });
-  
+
       for (const batch of batches) {
         if (remainingQuantity <= 0) break;
         const deductAmount = Math.min(batch.quantity, remainingQuantity);
@@ -64,10 +70,11 @@ export class InventoryRequestService {
         remainingQuantity -= deductAmount;
         await batch.save();
       }
-  
-      // ✅ Find or create department inventory item
-      let departmentItem = await Inventory.findOne({ where: { itemname: request.itemName, departmentId: request.departmentId } });
-  
+
+      let departmentItem = await Inventory.findOne({
+        where: { itemname: request.itemName, departmentId: request.departmentId },
+      });
+
       if (!departmentItem) {
         departmentItem = await Inventory.create({
           itemname: request.itemName,
@@ -78,23 +85,25 @@ export class InventoryRequestService {
           departmentId: request.departmentId,
         });
       }
-  
-      // ✅ Allocate stock from existing batches instead of direct quantity update
+
       await InventoryService.allocateFromBatches(departmentItem.id, request.quantity);
-  
+
       request.status = 'Approved';
       await request.save();
-  
-      // 🚨 If stock is low after approval, auto-create restocking request
+
       const newTotalStock = await InventoryBatch.sum('quantity', { where: { itemId: inventoryItem.id } });
       if (newTotalStock < inventoryItem.restockThreshold) {
-        await RestockingService.createRestockingRequest(inventoryItem.id, inventoryItem.minimumStockLevel * 2, approverId);
+        await RestockingService.createRestockingRequest(
+          inventoryItem.id,
+          inventoryItem.minimumStockLevel * 2,
+          approverId
+        );
       }
     } else {
       request.status = 'Rejected';
+      await request.save();
     }
-  
-    await request.save();
+
     return request;
   }
 
@@ -109,7 +118,6 @@ export class InventoryRequestService {
     await request.save();
 
     await RestockingService.createRestockingRequest(request.id, request.quantity, userId);
-
     return request;
   }
 }

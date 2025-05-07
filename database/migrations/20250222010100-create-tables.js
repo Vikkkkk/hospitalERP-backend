@@ -158,6 +158,12 @@ module.exports = {
         references: { model: "Users", key: "id" },
         onDelete: "CASCADE",
       },
+      checkoutUser: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: { model: "Users", key: "id" },
+        onDelete: "SET NULL",
+      },
       departmentId: {
         type: Sequelize.INTEGER,
         allowNull: false,

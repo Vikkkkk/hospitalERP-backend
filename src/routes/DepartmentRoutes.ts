@@ -43,7 +43,9 @@ router.get(
   authenticateUser,
   async (_req: AuthenticatedRequest, res: Response) => {
     try {
-      const departments = await Department.findAll();
+      const departments = await Department.findAll({
+        include: [{ model: User, as: 'head', attributes: ['id', 'username', 'role'] }],
+      });
       res.status(200).json({ departments });
     } catch (error) {
       console.error('❌ 获取部门列表失败:', error);
@@ -140,3 +142,6 @@ router.delete(
 );
 
 export default router;
+
+
+//	TODO: Currently, these route handlers include business logic. Consider delegating to a DepartmentController (like you’ve done for most other modules).

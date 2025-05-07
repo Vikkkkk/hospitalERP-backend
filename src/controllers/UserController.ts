@@ -4,7 +4,9 @@ import { Department } from '../models/Department';
 import bcrypt from 'bcrypt';
 
 export class UserController {
-  // ✅ Create a new user
+  /**
+   * ➕ Create a new user
+   */
   static async createUser(req: Request, res: Response): Promise<void> {
     try {
       const { username, role, password, departmentId, isglobalrole, permissions } = req.body;
@@ -21,14 +23,13 @@ export class UserController {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-
       const newUser = await User.create({
         username,
         role,
         password_hash: hashedPassword,
         departmentId: departmentId ?? null,
-        isglobalrole: isglobalrole || false,
-        permissions: permissions || {}, // ✅ Use new permission system
+        isglobalrole: !!isglobalrole,
+        permissions: permissions ?? {},
       });
 
       res.status(201).json({ message: '用户创建成功', user: newUser });
@@ -38,8 +39,10 @@ export class UserController {
     }
   }
 
-  // 📋 Get all users
-  static async getAllUsers(req: Request, res: Response): Promise<void> {
+  /**
+   * 📋 Get all users (excluding passwords)
+   */
+  static async getAllUsers(_req: Request, res: Response): Promise<void> {
     try {
       const users = await User.findAll({
         attributes: { exclude: ['password_hash'] },
@@ -48,7 +51,7 @@ export class UserController {
 
       const formattedUsers = users.map(user => ({
         ...user.toJSON(),
-        departmentName: user.userDepartment ? user.userDepartment.name : '无',
+        departmentName: user.userDepartment?.name ?? '无',
       }));
 
       res.status(200).json({ users: formattedUsers });
@@ -58,7 +61,9 @@ export class UserController {
     }
   }
 
-  // 🔄 Update User Role or Permissions
+  /**
+   * 🔄 Update user role, department, or permissions
+   */
   static async updateUser(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -90,7 +95,7 @@ export class UserController {
         message: '用户信息已更新',
         user: {
           ...updatedUser.toJSON(),
-          departmentName: updatedUser.userDepartment ? updatedUser.userDepartment.name : '无',
+          departmentName: updatedUser.userDepartment?.name ?? '无',
         },
       });
     } catch (error) {
@@ -99,7 +104,9 @@ export class UserController {
     }
   }
 
-  // 🔑 Reset Password
+  /**
+   * 🔐 Reset user password
+   */
   static async resetUserPassword(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -126,7 +133,9 @@ export class UserController {
     }
   }
 
-  // ❌ Soft Delete
+  /**
+   * ❌ Soft delete a user (mark as deleted)
+   */
   static async deleteUser(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -138,6 +147,7 @@ export class UserController {
       }
 
       await user.update({ deletedAt: new Date() });
+
       res.status(200).json({ message: '用户已软删除' });
     } catch (error) {
       console.error('❌ 无法删除用户:', error);

@@ -135,3 +135,9 @@ router.get('/me', authenticateUser, async (req: AuthenticatedRequest, res: Respo
 router.patch('/update', authenticateUser, AuthController.updateUser);
 
 export default router;
+
+
+
+
+
+// TODO: handling login logic both in this route and in AuthController.login

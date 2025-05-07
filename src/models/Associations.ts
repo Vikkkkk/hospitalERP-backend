@@ -33,11 +33,15 @@ User.hasMany(InventoryTransaction, { foreignKey: 'performedby', as: 'performedTr
 InventoryTransaction.belongsTo(User, { foreignKey: 'checkoutUser', as: 'checkoutUserInfo' });
 User.hasMany(InventoryTransaction, { foreignKey: 'checkoutUser', as: 'checkouts' });
 
+InventoryRequest.belongsTo(User, { foreignKey: 'checkoutUser', as: 'checkoutUserDetails' });
+User.hasMany(InventoryRequest, { foreignKey: 'checkoutUser', as: 'checkedOutInventoryRequests' });
+
 // 📝 Transactions ↔ Department
 InventoryTransaction.belongsTo(Department, { foreignKey: 'departmentId', as: 'transactionDepartment' });
 
 // 📥 Inventory Requests ↔ User & Dept
 InventoryRequest.belongsTo(User, { foreignKey: 'requestedBy', as: 'requester' });
+InventoryRequest.belongsTo(User, { foreignKey: 'requestedBy', as: 'requestedUser' });
 User.hasMany(InventoryRequest, { foreignKey: 'requestedBy', as: 'inventoryRequests' });
 
 InventoryRequest.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
@@ -56,9 +60,6 @@ Department.hasMany(ProcurementRequest, { foreignKey: 'departmentId', as: 'procur
 // 🧩 Procurement ↔ Inventory (Auto-Restock)
 ProcurementRequest.belongsTo(Inventory, { foreignKey: 'title', targetKey: 'itemname', as: 'inventoryItem' });
 Inventory.hasMany(ProcurementRequest, { foreignKey: 'title', sourceKey: 'itemname', as: 'procurementRequests' });
-
-
-
 
 console.log("✅ Associations initialized once!");
 

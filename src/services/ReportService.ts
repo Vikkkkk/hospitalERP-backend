@@ -1,77 +1,124 @@
-import { Inventory } from '../models/Inventory';
-import { ProcurementRequest } from '../models/ProcurementRequest';
+import { DataTypes, Model, Optional, Association } from 'sequelize';
+import { sequelize } from '../config/database';
+import { Department } from '../models/Department';
 import { User } from '../models/User';
-import { Op } from 'sequelize';
 
-/**
- * 📊 Report Service
- * Generates various reports for analysis and decision-making.
- */
-export class ReportService {
-  /**
-   * 📦 Generate inventory status report
-   */
-  static async generateInventoryReport(): Promise<any> {
-    try {
-      const inventoryData = await Inventory.findAll({
-        include: [{ association: 'batches' }], // Fetch associated batches
-      });
-  
-      return inventoryData.map((item) => {
-        const totalQuantity = item.batches?.reduce((sum, batch) => sum + batch.quantity, 0) || 0;
-  
-        return {
-          itemname: item.itemname,
-          quantity: totalQuantity,
-          minimumStockLevel: item.minimumStockLevel,
-          departmentId: item.departmentId,
-          lastRestocked: item.lastRestocked,
-        };
-      });
-    } catch (error) {
-      console.error('❌ Failed to generate inventory report:', error);
-      throw new Error('无法生成库存报告');
-    }
-  }
-
-  /**
-   * 📝 Generate procurement requests report
-   */
-  static async generateProcurementReport(status: string): Promise<any> {
-    try {
-      const procurementData = await ProcurementRequest.findAll({
-        where: { status },
-      });
-
-      return procurementData.map((request) => ({
-        title: request.title,
-        departmentId: request.departmentId,
-        quantity: request.quantity,
-        status: request.status,
-        deadlineDate: request.deadlineDate,
-      }));
-    } catch (error) {
-      console.error('❌ Failed to generate procurement report:', error);
-      throw new Error('无法生成采购报告');
-    }
-  }
-
-  /**
-   * 👥 Generate user activity report
-   */
-  static async generateUserActivityReport(): Promise<any> {
-    try {
-      const userData = await User.findAll();
-
-      return userData.map((user) => ({
-        username: user.username,
-        role: user.role,
-        departmentId: user.departmentId,
-        globalRole: user.isglobalrole ? 'Yes' : 'No',
-      }));
-    } catch (error) {
-      console.error('❌ Failed to generate user activity report:', error);
-      throw new Error('无法生成用户活动报告');
-    }
-  }
+interface ProcurementRequestAttributes {
+  id: number;
+  title: string;
+  description?: string;
+  departmentId: number | null;
+  requestedBy: number;
+  priorityLevel: 'Low' | 'Medium' | 'High';
+  deadlineDate: Date;
+  quantity: number;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+  approvalId?: string | null;
+  deletedAt?: Date | null;
 }
+
+interface ProcurementRequestCreationAttributes
+  extends Optional<ProcurementRequestAttributes, 'id' | 'description' | 'approvalId' | 'deletedAt'> {}
+
+export class ProcurementRequest
+  extends Model<ProcurementRequestAttributes, ProcurementRequestCreationAttributes>
+  implements ProcurementRequestAttributes
+{
+  public id!: number;
+  public title!: string;
+  public description?: string;
+  public departmentId!: number | null;
+  public requestedBy!: number;
+  public priorityLevel!: 'Low' | 'Medium' | 'High';
+  public deadlineDate!: Date;
+  public quantity!: number;
+  public status!: 'Pending' | 'Approved' | 'Rejected' | 'Completed';
+  public approvalId?: string | null;
+  public deletedAt?: Date | null;
+
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+
+  // ✅ Association properties
+  public readonly department?: Department;
+  public readonly requester?: User;
+
+  public static associations: {
+    department: Association<ProcurementRequest, Department>;
+    requester: Association<ProcurementRequest, User>;
+  };
+}
+
+ProcurementRequest.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    title: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    departmentId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: Department,
+        key: 'id',
+      },
+      onDelete: 'SET NULL',
+    },
+    requestedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: User,
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+    },
+    priorityLevel: {
+      type: DataTypes.ENUM('Low', 'Medium', 'High'),
+      allowNull: false,
+      defaultValue: 'Medium',
+    },
+    deadlineDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        min: 1,
+      },
+    },
+    status: {
+      type: DataTypes.ENUM('Pending', 'Approved', 'Rejected', 'Completed'),
+      allowNull: false,
+      defaultValue: 'Pending',
+    },
+    approvalId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'ProcurementRequest',
+    tableName: 'ProcurementRequests',
+    timestamps: true,
+    paranoid: true,
+  }
+);
+
+export default ProcurementRequest;

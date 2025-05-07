@@ -30,6 +30,8 @@
 │   │   ├── AuthController.ts
 │   │   ├── DepartmentController.ts
 │   │   ├── InventoryController.ts
+│   │   ├── InventoryRequestController.ts
+│   │   ├── InventoryTransactionController.ts
 │   │   ├── PermissionController.ts
 │   │   ├── ProcurementController.ts
 │   │   └── UserController.ts
@@ -40,8 +42,8 @@
 │   ├── models
 │   │   ├── Associations.ts
 │   │   ├── Department.ts
-│   │   ├── DepartmentPermissions.ts
 │   │   ├── Inventory.ts
+│   │   ├── InventoryBatch.ts
 │   │   ├── InventoryRequest.ts
 │   │   ├── InventoryTransaction.ts
 │   │   ├── ProcurementRequest.ts
@@ -55,6 +57,7 @@
 │   │   ├── InventoryRequestRoutes.ts
 │   │   ├── InventoryRoutes.ts
 │   │   ├── InventoryTransactionRoutes.ts
+│   │   ├── ProcurementRequestRoutes.ts
 │   │   ├── ProcurementRoutes.ts
 │   │   ├── UserRoutes.ts
 │   │   ├── WeComAuthRoutes.ts
@@ -68,9 +71,12 @@
 │   │   ├── AuthService.ts
 │   │   ├── DepartmentService.ts
 │   │   ├── ErrorService.ts
+│   │   ├── InventoryRequestService.ts
 │   │   ├── InventoryService.ts
+│   │   ├── InventoryTransactionService.ts
 │   │   ├── LoggerService.ts
 │   │   ├── NotificationService.ts
+│   │   ├── ProcurementService.ts
 │   │   ├── ReportService.ts
 │   │   ├── RestockingService.ts
 │   │   ├── UserService.ts
@@ -89,4 +95,4 @@
 │   └── wecomService.ts
 └── yarn.lock
 
-20 directories, 70 files
+20 directories, 76 files
